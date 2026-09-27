@@ -78,13 +78,15 @@ def test_check_team_name_availability(client, domains):
     assert resp.json()["available"] is False
 
 
-def test_registered_team_can_activate_and_login(client, domains, monkeypatch):
+def test_registered_team_can_activate_and_login(client, db_session, domains, monkeypatch):
     from tests.conftest import activate_participant, auth_headers
 
     resp = client.post("/api/registrations", json=_valid_payload())
     assert resp.status_code == 200
 
-    token = activate_participant(client, monkeypatch, "aditi.newteam@example.com", "LeaderPass123!")
+    token = activate_participant(
+        client, monkeypatch, "aditi.newteam@example.com", "LeaderPass123!", db_session=db_session
+    )
     team = client.get("/api/team", headers=auth_headers(token)).json()
     assert team["name"] == "Team Quantum"
     assert team["domain"]["slug"] == "cybersecurity-smart-homes"
@@ -110,12 +112,14 @@ def test_admin_can_toggle_payment_status(client, admin_user, domains):
     assert resp.json()["payment_status"] == "paid"
 
 
-def test_participant_cannot_toggle_payment_status(client, domains, monkeypatch):
+def test_participant_cannot_toggle_payment_status(client, db_session, domains, monkeypatch):
     from tests.conftest import activate_participant, auth_headers
 
     resp = client.post("/api/registrations", json=_valid_payload())
     registration_id = resp.json()["registration_id"]
-    token = activate_participant(client, monkeypatch, "aditi.newteam@example.com", "LeaderPass123!")
+    token = activate_participant(
+        client, monkeypatch, "aditi.newteam@example.com", "LeaderPass123!", db_session=db_session
+    )
 
     resp = client.put(
         f"/api/admin/registrations/{registration_id}/payment-status",

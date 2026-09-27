@@ -143,7 +143,7 @@ def mark_payment_paid(email: str) -> None:
         session.close()
 
 
-def activate_participant(client, monkeypatch, email, password) -> str:
+def activate_participant(client, monkeypatch, email, password, db_session=None) -> str:
     captured = {}
 
     def fake_send(to, team_name, activation_url):
@@ -152,6 +152,13 @@ def activate_participant(client, monkeypatch, email, password) -> str:
     monkeypatch.setattr("app.services.accounts.send_activation_email", fake_send)
 
     mark_payment_paid(email)
+    if db_session is not None:
+        # mark_payment_paid writes via its own session; the app's
+        # request-scoped session (shared across a test's requests here) may
+        # have already cached this row pre-payment, so expire it to force a
+        # fresh read — mirrors real production behavior, where every request
+        # gets its own fresh session with an empty cache.
+        db_session.expire_all()
     resp = client.post("/api/auth/request-access", json={"email": email})
     assert resp.status_code == 204, resp.text
 

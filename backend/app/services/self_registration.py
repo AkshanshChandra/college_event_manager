@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.models import Domain, Registration
 from app.models.enums import DomainStatus, PaymentStatus, RegistrationSource
 from app.schemas.registration_form import RegistrationFormRequest
+from app.services.registration_sync import sync_registrations_to_sheet_safe
 
 settings = get_settings()
 
@@ -70,6 +71,7 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
             detail="This team name or email was just registered by someone else. Please try again.",
         )
     db.refresh(registration)
+    sync_registrations_to_sheet_safe(db)
     return registration
 
 
@@ -119,4 +121,5 @@ def confirm_payment_screenshot(
         registration.payment_status = PaymentStatus.SUBMITTED
     db.commit()
     db.refresh(registration)
+    sync_registrations_to_sheet_safe(db)
     return registration

@@ -14,6 +14,7 @@ separate sync directions kept for organizer convenience:
 """
 
 import csv
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,10 +22,13 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Domain, Registration
+from app.models import Domain, Registration, User
 from app.models.enums import RegistrationSource
 
 settings = get_settings()
+logger = logging.getLogger("adappt.registration_sync")
+
+MAX_TEAM_SIZE = 4  # matches RegistrationFormRequest — up to 3 members beyond the leader
 
 REQUIRED_FIELDS = ("team_name", "leader_name", "leader_email", "leader_phone", "college", "domain")
 
@@ -172,52 +176,73 @@ def _parse_timestamp(raw: str | None) -> datetime:
     return datetime.now(timezone.utc)
 
 
-SHEET_HEADERS = [
-    "Team Name",
-    "Leader Name",
-    "Leader Email",
-    "Leader Phone",
-    "College",
-    "Degree Course",
-    "Domain",
-    "Team Size",
-    "Other Members",
-    "Payment Status",
-    "Payment Amount (INR)",
-    "Registered At (UTC)",
+_MEMBER_HEADERS = [
+    header
+    for i in range(2, MAX_TEAM_SIZE + 1)
+    for header in (f"Member {i} Name", f"Member {i} Phone")
 ]
 
+SHEET_HEADERS = (
+    ["Registration ID", "Team Name", "Leader Name", "Leader Email", "Leader Phone",
+     "College", "Degree Course", "Domain", "Team Size"]
+    + _MEMBER_HEADERS
+    + ["Payment Status", "Payment Amount (INR)", "Payment Screenshot",
+       "Payment Screenshot Uploaded At", "Registered At", "Account Status"]
+)
 
-def _member_display(member: dict | str) -> str:
+
+def member_name_and_phone(member: dict | str) -> tuple[str, str]:
+    # Legacy CSV/Sheets-imported rows store plain name strings (no phone);
+    # the native registration form stores {"name": ..., "phone": ...} dicts.
     if isinstance(member, dict):
-        phone = f" ({member['phone']})" if member.get("phone") else ""
-        return f"{member.get('name', '')}{phone}"
-    return str(member)
+        return member.get("name", ""), member.get("phone", "")
+    return str(member), ""
+
+
+def _account_status_for(db: Session, email: str) -> str:
+    user = db.query(User).filter(User.email == email).one_or_none()
+    return user.status.value if user else "not_created"
 
 
 def sync_registrations_to_sheet(db: Session) -> dict:
     """Pushes every registration to the configured Google Sheet, overwriting
-    its current contents so the sheet always mirrors the database exactly.
+    its current contents so the sheet always mirrors the database exactly —
+    same columns as the admin CSV export.
     """
     from app.integrations.google_forms import push_rows_to_sheet
 
     registrations = db.query(Registration).order_by(Registration.registered_at.asc()).all()
-    rows = [
-        [
-            r.team_name,
-            r.leader_name,
-            r.leader_email,
-            r.leader_phone,
-            r.college,
-            r.degree_course or "",
-            r.domain_slug,
-            r.team_size or "",
-            "; ".join(_member_display(m) for m in r.members_raw),
-            r.payment_status.value,
-            r.payment_amount_inr or "",
-            r.registered_at.isoformat(),
-        ]
-        for r in registrations
-    ]
+    rows = []
+    for r in registrations:
+        member_cells = []
+        for i in range(MAX_TEAM_SIZE - 1):
+            if i < len(r.members_raw):
+                name, phone = member_name_and_phone(r.members_raw[i])
+            else:
+                name, phone = "", ""
+            member_cells += [name, phone]
+
+        rows.append(
+            [r.id, r.team_name, r.leader_name, r.leader_email, r.leader_phone, r.college,
+             r.degree_course or "", r.domain_slug, r.team_size or ""]
+            + member_cells
+            + [r.payment_status.value, r.payment_amount_inr or "",
+               r.payment_screenshot_filename or "Not uploaded",
+               r.payment_screenshot_uploaded_at.isoformat() if r.payment_screenshot_uploaded_at else "",
+               r.registered_at.isoformat(), _account_status_for(db, r.leader_email)]
+        )
     push_rows_to_sheet(SHEET_HEADERS, rows)
     return {"rows_synced": len(rows)}
+
+
+def sync_registrations_to_sheet_safe(db: Session) -> None:
+    """Best-effort real-time push, called right after any registration
+    mutation. Swallows and logs failures (Sheets not configured, transient
+    Google API errors) so a sync problem never breaks the request that
+    triggered it — registration, payment upload, and payment verification
+    all still succeed even if the sheet push fails.
+    """
+    try:
+        sync_registrations_to_sheet(db)
+    except Exception:
+        logger.exception("Real-time Google Sheets sync failed")

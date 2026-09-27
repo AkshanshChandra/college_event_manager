@@ -15,7 +15,12 @@ from app.schemas.submission import SubmissionOut
 from app.schemas.team import TeamMemberOut, TeamOut
 from app.services.accounts import request_portal_access
 from app.services.audit import log_action
-from app.services.registration_sync import sync_registrations_to_sheet
+from app.services.registration_sync import (
+    MAX_TEAM_SIZE,
+    member_name_and_phone,
+    sync_registrations_to_sheet,
+    sync_registrations_to_sheet_safe,
+)
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -112,6 +117,7 @@ def update_payment_status(
                 registration.id,
             )
 
+    sync_registrations_to_sheet_safe(db)
     return _registration_to_out(db, registration)
 
 
@@ -122,17 +128,6 @@ def push_registrations_to_sheet(
     result = sync_registrations_to_sheet(db)
     log_action(db, admin, "push_registrations_to_sheet", "registration", context=result)
     return SheetSyncResultOut(**result)
-
-
-MAX_TEAM_SIZE = 4  # matches RegistrationFormRequest — up to 3 members beyond the leader
-
-
-def _member_name_and_phone(member: dict | str) -> tuple[str, str]:
-    # Legacy CSV/Sheets-imported rows store plain name strings (no phone);
-    # the native registration form stores {"name": ..., "phone": ...} dicts.
-    if isinstance(member, dict):
-        return member.get("name", ""), member.get("phone", "")
-    return str(member), ""
 
 
 @router.get("/registrations/export")
@@ -156,7 +151,7 @@ def export_registrations_csv(db: Session = Depends(get_db), _: User = Depends(re
         member_cells = []
         for i in range(MAX_TEAM_SIZE - 1):
             if i < len(r.members_raw):
-                name, phone = _member_name_and_phone(r.members_raw[i])
+                name, phone = member_name_and_phone(r.members_raw[i])
             else:
                 name, phone = "", ""
             member_cells += [name, phone]
