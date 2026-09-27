@@ -3,9 +3,12 @@ import { api } from './api'
 export const adminApi = {
   getDashboard: () => api.get('/admin/dashboard'),
   syncRegistrations: () => api.post('/admin/sync-registrations'),
+  pushRegistrationsToSheet: () => api.post('/admin/registrations/sync-to-sheet'),
 
   listRegistrations: (params) => api.get('/admin/registrations', { params }),
   exportRegistrationsUrl: () => '/api/admin/registrations/export',
+  updatePaymentStatus: (id, paymentStatus) =>
+    api.put(`/admin/registrations/${id}/payment-status`, { payment_status: paymentStatus }),
 
   listTeams: (params) => api.get('/admin/teams', { params }),
   getTeamDetail: (teamId) => api.get(`/admin/teams/${teamId}`),
@@ -15,7 +18,9 @@ export const adminApi = {
   updateDomain: (id, payload) => api.put(`/admin/domains/${id}`, payload),
 
   listProblemStatements: () => api.get('/admin/problem-statements'),
-  upsertProblemStatement: (payload) => api.post('/admin/problem-statements', payload),
+  createProblemStatement: (payload) => api.post('/admin/problem-statements', payload),
+  updateProblemStatement: (id, payload) => api.put(`/admin/problem-statements/${id}`, payload),
+  deleteProblemStatement: (id) => api.delete(`/admin/problem-statements/${id}`),
   setProblemStatementStatus: (id, status) =>
     api.put(`/admin/problem-statements/${id}/publish`, null, { params: { status } }),
 

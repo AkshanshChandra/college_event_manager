@@ -20,17 +20,30 @@ class RegistrationListItemOut(BaseModel):
     leader_name: str
     leader_email: str
     college: str
+    degree_course: str | None
     domain_slug: str
+    team_size: int | None
+    payment_status: str
+    payment_amount_inr: int | None
+    payment_screenshot_url: str | None
     registered_at: datetime
     account_status: str
 
     model_config = {"from_attributes": True}
 
 
+class PaymentStatusUpdate(BaseModel):
+    payment_status: str
+
+
 class SyncResultOut(BaseModel):
     created: int
     updated: int
     skipped: list[dict]
+
+
+class SheetSyncResultOut(BaseModel):
+    rows_synced: int
 
 
 class CompetitionSettingsOut(BaseModel):

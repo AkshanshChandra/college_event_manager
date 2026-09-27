@@ -1,4 +1,4 @@
-from tests.conftest import activate_participant, auth_headers, login
+from tests.conftest import activate_participant, auth_headers, login, mark_payment_paid
 
 
 def test_unregistered_email_cannot_request_access(client, domains):
@@ -33,11 +33,27 @@ def test_wrong_password_is_rejected(client, domains, registrations_synced, monke
     assert resp.status_code == 401
 
 
+def test_request_access_blocked_until_payment_verified(client, db_session, domains, registrations_synced):
+    """Request-access must fail until an admin has verified payment — this is
+    the whole point: a team isn't registered/granted portal access on the
+    strength of an unverified payment screenshot alone.
+    """
+    resp = client.post("/api/auth/request-access", json={"email": "leader.a@example.com"})
+    assert resp.status_code == 403
+    assert "still being verified" in resp.json()["detail"].lower()
+
+    mark_payment_paid("leader.a@example.com")
+    db_session.expire_all()  # the app's request-scoped session cached the pre-payment row
+    resp = client.post("/api/auth/request-access", json={"email": "leader.a@example.com"})
+    assert resp.status_code == 204
+
+
 def test_inactive_account_cannot_login(client, domains, registrations_synced):
     """An account that exists (e.g. via a stray User row) but was never activated can't log in."""
     from app.models import User
     from app.models.enums import AccountStatus, UserRole
 
+    mark_payment_paid("leader.a@example.com")
     resp = client.post("/api/auth/request-access", json={"email": "leader.a@example.com"})
     assert resp.status_code == 204
 

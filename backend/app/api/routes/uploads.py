@@ -9,6 +9,7 @@ from app.models import User
 from app.models.enums import SubmissionFileType
 from app.schemas.submission import FileMetaIn, PresignRequest, PresignResponse, SubmissionOut, SubmitRequest
 from app.services.email import send_submission_confirmation_email
+from app.services.self_registration import get_registration_for_email_or_raise
 from app.services.storage import LocalDiskStorage, get_storage, verify_local_download_signature
 from app.services.submissions import (
     FileMeta,
@@ -17,6 +18,7 @@ from app.services.submissions import (
     get_round_settings,
     validate_file_or_raise,
 )
+from app.utils.rate_limit import limiter
 
 router = APIRouter(tags=["uploads"])
 
@@ -58,6 +60,40 @@ async def local_direct_upload(
     if not isinstance(storage, LocalDiskStorage):
         raise HTTPException(status_code=400, detail="Local upload endpoint is disabled.")
     _assert_owns_storage_key(current_user, storage_key)
+
+    import tempfile
+
+    dest_path = storage.resolve_path(storage_key)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        async for chunk in request.stream():
+            tmp.write(chunk)
+        tmp_path = tmp.name
+    storage.save_local_upload(storage_key, tmp_path)
+
+
+@router.put("/uploads/registration-payment/{storage_key:path}", status_code=204)
+@limiter.limit("20/minute")
+async def local_registration_payment_upload(
+    request: Request,
+    storage_key: str,
+    registration_id: int,
+    email: str,
+    db: Session = Depends(get_db),
+) -> None:
+    """Dev-only stand-in for an S3 presigned PUT, used by the unauthenticated
+    payment-screenshot step of registration (no JWT exists yet at this point
+    — the whole point is that portal access isn't granted until payment is
+    verified). Ownership is checked by registration_id + leader email match.
+    """
+    storage = get_storage()
+    if not isinstance(storage, LocalDiskStorage):
+        raise HTTPException(status_code=400, detail="Local upload endpoint is disabled.")
+
+    get_registration_for_email_or_raise(db, registration_id, email)
+    expected_prefix = f"registrations/{registration_id}/payment/"
+    if not storage_key.startswith(expected_prefix):
+        raise HTTPException(status_code=403, detail="Invalid storage key for this registration.")
 
     import tempfile
 

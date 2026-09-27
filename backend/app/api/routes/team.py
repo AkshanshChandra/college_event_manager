@@ -33,19 +33,19 @@ def get_my_team(current_user: User = Depends(require_participant)) -> TeamOut:
     )
 
 
-@router.get("/problem-statement", response_model=ProblemStatementOut | None)
-def get_my_problem_statement(
+@router.get("/problem-statements", response_model=list[ProblemStatementOut])
+def get_my_problem_statements(
     current_user: User = Depends(require_participant), db: Session = Depends(get_db)
-) -> ProblemStatement | None:
-    ps = (
+) -> list[ProblemStatement]:
+    return (
         db.query(ProblemStatement)
         .filter(
             ProblemStatement.domain_id == current_user.team.domain_id,
             ProblemStatement.status == PublishStatus.PUBLISHED,
         )
-        .one_or_none()
+        .order_by(ProblemStatement.order_index)
+        .all()
     )
-    return ps
 
 
 @router.get("/hints", response_model=list[HintOut])

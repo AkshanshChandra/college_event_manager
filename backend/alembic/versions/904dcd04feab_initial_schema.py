@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 68a608aeea91
+Revision ID: 904dcd04feab
 Revises: 
-Create Date: 2026-09-24 11:01:10.689144
+Create Date: 2026-09-27 17:21:47.072598
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '68a608aeea91'
+revision: str = '904dcd04feab'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -54,18 +54,26 @@ def upgrade() -> None:
     sa.Column('leader_email', sa.String(length=320), nullable=False),
     sa.Column('leader_phone', sa.String(length=32), nullable=False),
     sa.Column('college', sa.String(length=255), nullable=False),
+    sa.Column('degree_course', sa.String(length=255), nullable=True),
     sa.Column('domain_slug', sa.String(length=64), nullable=False),
+    sa.Column('team_size', sa.Integer(), nullable=True),
     sa.Column('members_raw', sa.JSON(), nullable=False),
     sa.Column('registered_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('source', sa.Enum('csv', 'google_sheets', 'manual', name='registrationsource'), nullable=False),
     sa.Column('external_ref', sa.String(length=255), nullable=True),
     sa.Column('raw_row', sa.JSON(), nullable=False),
     sa.Column('synced_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('payment_status', sa.Enum('pending', 'submitted', 'paid', name='paymentstatus'), server_default='pending', nullable=False),
+    sa.Column('payment_amount_inr', sa.Integer(), nullable=True),
+    sa.Column('payment_screenshot_key', sa.String(length=1024), nullable=True),
+    sa.Column('payment_screenshot_filename', sa.String(length=512), nullable=True),
+    sa.Column('payment_screenshot_uploaded_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_registrations_leader_email'), 'registrations', ['leader_email'], unique=True)
+    op.create_index(op.f('ix_registrations_team_name'), 'registrations', ['team_name'], unique=True)
     op.create_table('hints',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('week_number', sa.Integer(), nullable=False),
@@ -83,6 +91,7 @@ def upgrade() -> None:
     op.create_table('problem_statements',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('domain_id', sa.Integer(), nullable=False),
+    sa.Column('order_index', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=255), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('requirements', sa.Text(), nullable=True),
@@ -93,8 +102,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['domain_id'], ['domains.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('domain_id')
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('teams',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -126,6 +134,7 @@ def upgrade() -> None:
     sa.Column('team_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('email', sa.String(length=320), nullable=True),
+    sa.Column('phone', sa.String(length=32), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['team_id'], ['teams.id'], ondelete='CASCADE'),
@@ -200,6 +209,7 @@ def downgrade() -> None:
     op.drop_table('teams')
     op.drop_table('problem_statements')
     op.drop_table('hints')
+    op.drop_index(op.f('ix_registrations_team_name'), table_name='registrations')
     op.drop_index(op.f('ix_registrations_leader_email'), table_name='registrations')
     op.drop_table('registrations')
     op.drop_index(op.f('ix_domains_slug'), table_name='domains')

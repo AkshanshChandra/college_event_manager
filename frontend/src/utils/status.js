@@ -23,6 +23,12 @@ export const PUBLISH_STATUS_META = {
   published: { label: 'Published', variant: 'success' },
 }
 
+export const PAYMENT_STATUS_META = {
+  pending: { label: 'No Proof Yet', variant: 'warning' },
+  submitted: { label: 'Awaiting Verification', variant: 'accent' },
+  paid: { label: 'Paid', variant: 'success' },
+}
+
 export function formatDateTime(value) {
   if (!value) return '—'
   return new Date(value).toLocaleString(undefined, {

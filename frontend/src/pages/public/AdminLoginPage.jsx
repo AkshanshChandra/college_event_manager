@@ -30,20 +30,20 @@ export function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-950 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <Brand className="text-white [&_span:last-child]:text-white" />
+          <Brand />
         </div>
-        <div className="rounded-lg border border-ink-800 bg-ink-900 p-6 shadow-sm">
+        <div className="rounded-lg border border-ink-200 bg-surface p-6 shadow-sm">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-accent-400" />
-            <h1 className="text-lg font-semibold text-white">Admin Login</h1>
+            <ShieldCheck size={18} className="text-accent-500" />
+            <h1 className="text-lg font-semibold text-ink-950">Admin Login</h1>
           </div>
-          <p className="mt-1 text-sm text-ink-400">Organizer access only.</p>
+          <p className="mt-1 text-sm text-ink-500">Organizer access only.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-            <Field label={<span className="text-ink-200">Email</span>}>
+            <Field label="Email">
               <Input
                 type="email"
                 required
@@ -53,7 +53,7 @@ export function AdminLoginPage() {
                 placeholder="admin@adappt.dev"
               />
             </Field>
-            <Field label={<span className="text-ink-200">Password</span>}>
+            <Field label="Password">
               <Input
                 type="password"
                 required
@@ -68,7 +68,7 @@ export function AdminLoginPage() {
             </Button>
           </form>
         </div>
-        <p className="mt-4 text-center text-sm text-ink-400">
+        <p className="mt-4 text-center text-sm text-ink-500">
           <Link to="/login" className="hover:underline">Participant login</Link>
         </p>
       </div>

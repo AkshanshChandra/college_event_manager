@@ -6,7 +6,9 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-os.environ["DATABASE_URL"] = "postgresql+psycopg://localhost/adappt_test"
+# setdefault (not direct assignment) so CI can point this at its own
+# Postgres service container/user via a real env var.
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://localhost/adappt_test")
 os.environ["JWT_SECRET_KEY"] = "test-secret-key"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["EMAIL_BACKEND"] = "console"
@@ -28,8 +30,8 @@ settings = get_settings()
 from app.auth.security import hash_password  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import CompetitionSettings, Domain, User  # noqa: E402
-from app.models.enums import AccountStatus, DomainStatus, UserRole  # noqa: E402
+from app.models import CompetitionSettings, Domain, Registration, User  # noqa: E402
+from app.models.enums import AccountStatus, DomainStatus, PaymentStatus, UserRole  # noqa: E402
 from app.services.registration_sync import sync_registrations  # noqa: E402
 from app.utils.rate_limit import limiter  # noqa: E402
 
@@ -76,9 +78,12 @@ def client(db_session):
 def domains(db_session):
     healthcare = Domain(slug="healthcare", name="Healthcare", status=DomainStatus.ACTIVE)
     fintech = Domain(slug="fintech", name="Fintech", status=DomainStatus.ACTIVE)
-    db_session.add_all([healthcare, fintech])
+    cybersecurity = Domain(
+        slug="cybersecurity-smart-homes", name="Cybersecurity in Smart Homes", status=DomainStatus.ACTIVE
+    )
+    db_session.add_all([healthcare, fintech, cybersecurity])
     db_session.commit()
-    return {"healthcare": healthcare, "fintech": fintech}
+    return {"healthcare": healthcare, "fintech": fintech, "cybersecurity-smart-homes": cybersecurity}
 
 
 @pytest.fixture()
@@ -125,6 +130,19 @@ def login(client, email, password) -> str:
     return resp.json()["access_token"]
 
 
+def mark_payment_paid(email: str) -> None:
+    """Test helper standing in for an admin having verified a payment
+    screenshot: request-access is gated on payment_status == PAID.
+    """
+    session = TestingSessionLocal()
+    try:
+        registration = session.query(Registration).filter_by(leader_email=email.strip().lower()).one()
+        registration.payment_status = PaymentStatus.PAID
+        session.commit()
+    finally:
+        session.close()
+
+
 def activate_participant(client, monkeypatch, email, password) -> str:
     captured = {}
 
@@ -133,6 +151,7 @@ def activate_participant(client, monkeypatch, email, password) -> str:
 
     monkeypatch.setattr("app.services.accounts.send_activation_email", fake_send)
 
+    mark_payment_paid(email)
     resp = client.post("/api/auth/request-access", json={"email": email})
     assert resp.status_code == 204, resp.text
 

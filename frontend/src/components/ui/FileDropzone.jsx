@@ -33,7 +33,7 @@ export function FileDropzone({
         }}
         onClick={() => !disabled && inputRef.current?.click()}
         className={`mt-2 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
-          disabled ? 'cursor-not-allowed border-ink-100 bg-ink-50' : 'border-ink-200 hover:border-accent-400 hover:bg-accent-50'
+          disabled ? 'cursor-not-allowed border-ink-100 bg-ink-50' : 'border-ink-200 hover:border-accent-400 hover:bg-accent-600/10'
         }`}
       >
         <input

@@ -97,24 +97,39 @@ cd backend && source venv/bin/activate
 alembic upgrade head
 ```
 
-## 6. Google Integration Setup
+## 6. Registration & Google Sheets Setup
 
-For local development, leave `REGISTRATION_SYNC_MODE=csv` — the sync reads
-`backend/dev_data/registrations.csv` (columns: Timestamp, Team Name, Team Leader Name, Team
-Leader Email, Phone, College, Domain, Team Members).
+Registration is native to the portal (`/register`) — no Google Form is involved. A participant
+fills out the form (name, mobile, email, college, degree, unique team name, domain, team size 1–4
+with per-member name/phone for members beyond the first) and is shown a UPI QR code with the
+total due (`team_size × PAYMENT_PER_PERSON_INR`, default ₹300/person). Payment is verified
+manually: an admin marks the registration "Paid" from Admin → Registrations after checking their
+UPI app — there is no payment gateway integration.
 
-For production:
+Two admin tools work off the same `registrations` table:
 
-1. Create a Google Cloud service account with the Sheets API enabled.
-2. Share the Google Form's response spreadsheet with the service account's email (viewer access).
-3. Set in `.env`:
-   ```
-   REGISTRATION_SYNC_MODE=google_sheets
-   GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
-   GOOGLE_SHEET_ID=<spreadsheet id from its URL>
-   GOOGLE_SHEET_WORKSHEET=Form Responses 1
-   ```
-4. Trigger a sync from Admin → Dashboard → "Sync Registrations", or `POST /api/admin/sync-registrations`.
+- **Export CSV** (Admin → Registrations → "Export CSV") — works with no setup.
+- **Push to Google Sheet** (Admin → Dashboard → "Push to Google Sheet") — mirrors every
+  registration into a Google Sheet for organizers who want a spreadsheet view. Requires:
+  1. A Google Cloud service account with the Sheets API enabled.
+  2. Share the target spreadsheet with the service account's email, with **Editor** access.
+  3. Set in `.env`:
+     ```
+     GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
+     GOOGLE_SHEET_ID=<spreadsheet id from its URL>
+     GOOGLE_SHEET_WORKSHEET=Registrations
+     ```
+  Until configured, the button fails with a clear "Could not push to Google Sheet" toast rather
+  than silently no-oping.
+
+A legacy pull-based import (`REGISTRATION_SYNC_MODE=csv` reading
+`backend/dev_data/registrations.csv`, or `=google_sheets` reading a sheet in) also still exists
+(`POST /api/admin/sync-registrations`) as optional bulk-import tooling — e.g. for importing
+registrations collected before the native form existed. It's not exposed in the admin UI.
+
+**Payment QR code**: `frontend/src/assets/payment-qr.svg` is a placeholder — replace it with the
+real UPI QR code image (same filename, or update the import in
+`frontend/src/pages/public/RegisterPage.jsx` if the extension changes).
 
 ## 7. AWS S3 Setup
 
@@ -178,9 +193,11 @@ python -m scripts.seed
 ```
 
 Creates (all clearly marked `[SAMPLE]` where user-facing): an admin account
-(`admin@adappt.dev` / `ChangeMe123!` — **change this immediately**), three domains
-(Healthcare, Fintech, Sustainability) with sample problem statements, two sample hints, Round 1
-competition settings, and syncs the bundled `dev_data/registrations.csv`.
+(`admin@adappt.dev` / `ChangeMe123!` — **change this immediately**), the three competition domains
+(Cybersecurity in Smart Homes, AI in FoodTech, Robotics and Automation in Natural Disaster
+Management) with sample problem statements, two sample hints, Round 1 competition settings, and
+imports the bundled `dev_data/registrations.csv` via the legacy bulk-import path (for local
+dev/demo teams only — real registrations come through `/register`).
 
 ## 12. Tests
 

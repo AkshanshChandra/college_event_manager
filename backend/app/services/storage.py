@@ -65,6 +65,11 @@ def _build_key(team_id: int, file_type: str, filename: str) -> str:
     return f"teams/{team_id}/{file_type}/{uuid.uuid4().hex}-{safe_name}"
 
 
+def build_registration_payment_key(registration_id: int, filename: str) -> str:
+    safe_name = Path(filename).name
+    return f"registrations/{registration_id}/payment/{uuid.uuid4().hex}-{safe_name}"
+
+
 class LocalDiskStorage(StorageBackend):
     """Development stand-in for S3. Mimics the presigned-upload shape so the
     frontend upload flow (and the API contract) is identical to production:

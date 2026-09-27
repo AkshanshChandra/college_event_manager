@@ -15,8 +15,8 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/40 px-4">
-      <div className={`w-full ${widths[size]} rounded-lg border border-ink-200 bg-white shadow-xl`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className={`w-full ${widths[size]} rounded-lg border border-ink-200 bg-surface shadow-xl`}>
         <div className="flex items-start justify-between border-b border-ink-100 px-5 py-4">
           <div>
             <h2 className="text-sm font-semibold text-ink-900">{title}</h2>

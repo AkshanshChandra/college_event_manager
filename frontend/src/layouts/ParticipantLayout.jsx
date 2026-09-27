@@ -55,7 +55,7 @@ export function ParticipantLayout() {
             onClick={() => setMobileOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-100 hover:text-ink-900'
+                isActive ? 'bg-accent-600 text-white' : 'text-ink-500 hover:bg-ink-100 hover:text-ink-950'
               }`
             }
           >
@@ -84,7 +84,7 @@ export function ParticipantLayout() {
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
-          <div className="absolute inset-0 bg-ink-950/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex w-64 flex-col bg-surface">{navContent}</aside>
         </div>
       )}

@@ -1,14 +1,16 @@
-"""Synchronizes registration data (Google Form responses) into the
-`registrations` table, which is the source of truth for "is this email
-actually registered". Two sources are supported, chosen by
-settings.REGISTRATION_SYNC_MODE:
+"""Registration data sync.
 
-  - "csv": reads a local CSV shaped like the Google Form response sheet.
-    Used for local development before real Google credentials exist.
-  - "google_sheets": reads live via app.integrations.google_forms.
+The portal's own registration form (app/services/self_registration.py) is the
+source of truth for new registrations. This module covers two optional,
+separate sync directions kept for organizer convenience:
 
-Either way, rows funnel through the same validation/dedup/normalization path
-so switching sources later requires no changes to the sync semantics.
+  - sync_registrations(): pulls rows IN from a CSV (local dev) or a Google
+    Sheet into the `registrations` table — a legacy bulk-import path, useful
+    for e.g. importing a spreadsheet of registrations collected before the
+    native form existed. Chosen by settings.REGISTRATION_SYNC_MODE.
+  - sync_registrations_to_sheet(): pushes the current `registrations` table
+    OUT to a Google Sheet, so organizers can view/filter/share the list in a
+    familiar spreadsheet.
 """
 
 import csv
@@ -86,6 +88,7 @@ def sync_registrations(db: Session) -> SyncOutcome:
     outcome = SyncOutcome()
     domains_by_name = {d.name.strip().lower(): d for d in db.query(Domain).all()}
     domains_by_slug = {d.slug: d for d in db.query(Domain).all()}
+    team_names_in_use = {t.lower() for t, in db.query(Registration.team_name).all()}
 
     source = (
         RegistrationSource.GOOGLE_SHEETS
@@ -114,10 +117,20 @@ def sync_registrations(db: Session) -> SyncOutcome:
             db.query(Registration).filter(Registration.leader_email == email).one_or_none()
         )
 
+        team_name = row["team_name"].strip()
+        team_name_key = team_name.lower()
+        already_taken = team_name_key in team_names_in_use and not (
+            existing and existing.team_name.strip().lower() == team_name_key
+        )
+        if already_taken:
+            outcome.skipped.append({"row": raw_row, "reason": f"team name '{team_name}' already in use"})
+            continue
+        team_names_in_use.add(team_name_key)
+
         registered_at = _parse_timestamp(row.get("timestamp"))
 
         if existing:
-            existing.team_name = row["team_name"].strip()
+            existing.team_name = team_name
             existing.leader_name = row["leader_name"].strip()
             existing.leader_phone = row["leader_phone"].strip()
             existing.college = row["college"].strip()
@@ -157,3 +170,54 @@ def _parse_timestamp(raw: str | None) -> datetime:
         except ValueError:
             continue
     return datetime.now(timezone.utc)
+
+
+SHEET_HEADERS = [
+    "Team Name",
+    "Leader Name",
+    "Leader Email",
+    "Leader Phone",
+    "College",
+    "Degree Course",
+    "Domain",
+    "Team Size",
+    "Other Members",
+    "Payment Status",
+    "Payment Amount (INR)",
+    "Registered At (UTC)",
+]
+
+
+def _member_display(member: dict | str) -> str:
+    if isinstance(member, dict):
+        phone = f" ({member['phone']})" if member.get("phone") else ""
+        return f"{member.get('name', '')}{phone}"
+    return str(member)
+
+
+def sync_registrations_to_sheet(db: Session) -> dict:
+    """Pushes every registration to the configured Google Sheet, overwriting
+    its current contents so the sheet always mirrors the database exactly.
+    """
+    from app.integrations.google_forms import push_rows_to_sheet
+
+    registrations = db.query(Registration).order_by(Registration.registered_at.asc()).all()
+    rows = [
+        [
+            r.team_name,
+            r.leader_name,
+            r.leader_email,
+            r.leader_phone,
+            r.college,
+            r.degree_course or "",
+            r.domain_slug,
+            r.team_size or "",
+            "; ".join(_member_display(m) for m in r.members_raw),
+            r.payment_status.value,
+            r.payment_amount_inr or "",
+            r.registered_at.isoformat(),
+        ]
+        for r in registrations
+    ]
+    push_rows_to_sheet(SHEET_HEADERS, rows)
+    return {"rows_synced": len(rows)}

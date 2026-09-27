@@ -30,14 +30,10 @@ export function AdminDashboardPage() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const { data } = await adminApi.syncRegistrations()
-      notify(
-        `Sync complete: ${data.created} created, ${data.updated} updated, ${data.skipped.length} skipped.`,
-        'success'
-      )
-      load()
+      const { data } = await adminApi.pushRegistrationsToSheet()
+      notify(`Pushed ${data.rows_synced} registration(s) to the Google Sheet.`, 'success')
     } catch (err) {
-      notify(getErrorMessage(err, 'Sync failed.'), 'error')
+      notify(getErrorMessage(err, 'Could not push to Google Sheet.'), 'error')
     } finally {
       setSyncing(false)
     }
@@ -55,7 +51,7 @@ export function AdminDashboardPage() {
         description="Live registration and submission statistics."
         action={
           <Button variant="secondary" onClick={handleSync} loading={syncing}>
-            <RefreshCw size={16} /> Sync Registrations
+            <RefreshCw size={16} /> Push to Google Sheet
           </Button>
         }
       />

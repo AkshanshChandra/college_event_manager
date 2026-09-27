@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Download } from 'lucide-react'
+import { Search, Download, Image as ImageIcon } from 'lucide-react'
 import { PageHeader } from '../../components/PageHeader'
 import { Input, Select } from '../../components/ui/Field'
 import { Table, Td } from '../../components/ui/Table'
@@ -8,34 +8,58 @@ import { Badge } from '../../components/ui/Badge'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { PageLoader, EmptyState } from '../../components/ui/States'
 import { adminApi } from '../../services/admin'
-import { ACCOUNT_STATUS_META, formatDateTime } from '../../utils/status'
+import { getErrorMessage } from '../../services/api'
+import { useToast } from '../../hooks/useToast'
+import { ACCOUNT_STATUS_META, PAYMENT_STATUS_META, formatDateTime } from '../../utils/status'
 
 const PAGE_SIZE = 25
 
 export function AdminRegistrationsPage() {
+  const { notify } = useToast()
   const [rows, setRows] = useState(null)
   const [search, setSearch] = useState('')
   const [domain, setDomain] = useState('')
   const [domains, setDomains] = useState([])
   const [page, setPage] = useState(1)
+  const [updatingId, setUpdatingId] = useState(null)
 
   useEffect(() => {
     adminApi.listDomains().then(({ data }) => setDomains(data))
   }, [])
 
-  useEffect(() => {
+  const load = () => {
     setRows(null)
     const params = { page, page_size: PAGE_SIZE }
     if (search) params.search = search
     if (domain) params.domain = domain
     adminApi.listRegistrations(params).then(({ data }) => setRows(data))
-  }, [search, domain, page])
+  }
+
+  useEffect(load, [search, domain, page])
+
+  const setPaymentStatus = async (registration, next) => {
+    setUpdatingId(registration.id)
+    try {
+      await adminApi.updatePaymentStatus(registration.id, next)
+      notify(
+        next === 'paid'
+          ? "Marked as paid — credentials email sent to the team's leader."
+          : 'Payment status updated.',
+        'success'
+      )
+      load()
+    } catch (err) {
+      notify(getErrorMessage(err, 'Could not update payment status.'), 'error')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
 
   return (
     <div>
       <PageHeader
         title="Registrations"
-        description="Teams synced from the Google Form response sheet."
+        description="Teams registered through the portal's registration form."
         action={
           <a href={adminApi.exportRegistrationsUrl()}>
             <Button variant="secondary">
@@ -80,7 +104,7 @@ export function AdminRegistrationsPage() {
       ) : rows.length === 0 ? (
         <EmptyState title="No registrations found" description="Try a different search or filter." />
       ) : (
-        <Table columns={['Team', 'Leader', 'Email', 'College', 'Domain', 'Registered', 'Account']}>
+        <Table columns={['Team', 'Leader', 'Email', 'College', 'Domain', 'Size', 'Payment', 'Registered', 'Account', '']}>
           {rows.map((r) => (
             <tr key={r.id}>
               <Td className="font-medium text-ink-900">{r.team_name}</Td>
@@ -90,9 +114,54 @@ export function AdminRegistrationsPage() {
               <Td>
                 <Badge variant="neutral">{r.domain_slug}</Badge>
               </Td>
+              <Td>{r.team_size ?? '—'}</Td>
+              <Td>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge meta={PAYMENT_STATUS_META[r.payment_status]} />
+                    {r.payment_amount_inr != null && (
+                      <span className="text-xs text-ink-400">₹{r.payment_amount_inr}</span>
+                    )}
+                  </div>
+                  {r.payment_screenshot_url && (
+                    <a
+                      href={r.payment_screenshot_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex w-fit items-center gap-1 text-xs font-medium text-accent-700 hover:underline"
+                    >
+                      <ImageIcon size={12} /> View Screenshot
+                    </a>
+                  )}
+                </div>
+              </Td>
               <Td>{formatDateTime(r.registered_at)}</Td>
               <Td>
                 <StatusBadge meta={ACCOUNT_STATUS_META[r.account_status]} />
+              </Td>
+              <Td>
+                <div className="flex gap-2">
+                  {r.payment_status !== 'paid' && (
+                    <Button
+                      variant={r.payment_status === 'submitted' ? 'accent' : 'secondary'}
+                      size="sm"
+                      loading={updatingId === r.id}
+                      onClick={() => setPaymentStatus(r, 'paid')}
+                    >
+                      Verify &amp; Send Credentials
+                    </Button>
+                  )}
+                  {r.payment_status === 'paid' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={updatingId === r.id}
+                      onClick={() => setPaymentStatus(r, 'pending')}
+                    >
+                      Revert to Pending
+                    </Button>
+                  )}
+                </div>
               </Td>
             </tr>
           ))}

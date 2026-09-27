@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models import Domain, Hint, ProblemStatement, User
 from app.schemas.domain import DomainCreate, DomainOut, DomainUpdate
 from app.schemas.hint import HintCreate, HintOut, HintUpdate
-from app.schemas.problem_statement import ProblemStatementOut, ProblemStatementUpsert
+from app.schemas.problem_statement import ProblemStatementCreate, ProblemStatementOut, ProblemStatementUpdate
 from app.services.audit import log_action
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -47,30 +47,51 @@ def update_domain(
 
 
 # --- Problem statements --------------------------------------------------
+# A domain has several problem statements (ADAPPT ships exactly three per
+# domain), ordered by order_index.
 
 @router.get("/problem-statements", response_model=list[ProblemStatementOut])
 def list_problem_statements(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> list[ProblemStatement]:
-    return db.query(ProblemStatement).all()
+    return db.query(ProblemStatement).order_by(ProblemStatement.domain_id, ProblemStatement.order_index).all()
 
 
 @router.post("/problem-statements", response_model=ProblemStatementOut)
-def upsert_problem_statement(
-    payload: ProblemStatementUpsert, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+def create_problem_statement(
+    payload: ProblemStatementCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
 ) -> ProblemStatement:
-    existing = db.query(ProblemStatement).filter_by(domain_id=payload.domain_id).one_or_none()
-    if existing:
-        for field, value in payload.model_dump().items():
-            setattr(existing, field, value)
-        ps = existing
-        action = "update_problem_statement"
-    else:
-        ps = ProblemStatement(**payload.model_dump())
-        db.add(ps)
-        action = "create_problem_statement"
+    ps = ProblemStatement(**payload.model_dump())
+    db.add(ps)
     db.commit()
     db.refresh(ps)
-    log_action(db, admin, action, "problem_statement", ps.id)
+    log_action(db, admin, "create_problem_statement", "problem_statement", ps.id, {"title": ps.title})
     return ps
+
+
+@router.put("/problem-statements/{ps_id}", response_model=ProblemStatementOut)
+def update_problem_statement(
+    ps_id: int, payload: ProblemStatementUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> ProblemStatement:
+    ps = db.get(ProblemStatement, ps_id)
+    if ps is None:
+        raise HTTPException(status_code=404, detail="Problem statement not found.")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(ps, field, value)
+    db.commit()
+    db.refresh(ps)
+    log_action(db, admin, "update_problem_statement", "problem_statement", ps.id)
+    return ps
+
+
+@router.delete("/problem-statements/{ps_id}", status_code=204)
+def delete_problem_statement(
+    ps_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> None:
+    ps = db.get(ProblemStatement, ps_id)
+    if ps is None:
+        raise HTTPException(status_code=404, detail="Problem statement not found.")
+    db.delete(ps)
+    db.commit()
+    log_action(db, admin, "delete_problem_statement", "problem_statement", ps_id)
 
 
 @router.put("/problem-statements/{ps_id}/publish", response_model=ProblemStatementOut)

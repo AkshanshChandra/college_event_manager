@@ -12,6 +12,7 @@ import { LoginPage } from './pages/public/LoginPage'
 import { AdminLoginPage } from './pages/public/AdminLoginPage'
 import { RequestAccessPage } from './pages/public/RequestAccessPage'
 import { ActivatePage } from './pages/public/ActivatePage'
+import { RegisterPage } from './pages/public/RegisterPage'
 
 import { DashboardPage } from './pages/participant/DashboardPage'
 import { ProblemStatementPage } from './pages/participant/ProblemStatementPage'
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/request-access" element={<RequestAccessPage />} />
             <Route path="/activate/:token" element={<ActivatePage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
             {/* Participant */}
             <Route element={<RequireParticipant />}>

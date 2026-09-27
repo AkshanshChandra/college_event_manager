@@ -17,8 +17,10 @@ class Domain(Base, TimestampMixin):
         pg_enum(DomainStatus), default=DomainStatus.ACTIVE, server_default=DomainStatus.ACTIVE.value
     )
 
-    problem_statement: Mapped["ProblemStatement | None"] = relationship(
-        back_populates="domain", uselist=False, cascade="all, delete-orphan"
+    problem_statements: Mapped[list["ProblemStatement"]] = relationship(
+        back_populates="domain",
+        cascade="all, delete-orphan",
+        order_by="ProblemStatement.order_index",
     )
     teams: Mapped[list["Team"]] = relationship(back_populates="domain")
     hints: Mapped[list["Hint"]] = relationship(back_populates="domain")

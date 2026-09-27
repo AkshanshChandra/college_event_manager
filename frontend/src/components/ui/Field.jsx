@@ -14,8 +14,8 @@ export function Field({ label, htmlFor, error, hint, children }) {
 }
 
 const baseInputClasses =
-  'h-10 w-full rounded-md border border-ink-200 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400 ' +
-  'focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100 disabled:bg-ink-50 disabled:text-ink-400'
+  'h-10 w-full rounded-md border border-ink-300 bg-ink-50 px-3 text-sm text-ink-900 placeholder:text-ink-500 ' +
+  'focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/30 disabled:bg-ink-100 disabled:text-ink-500'
 
 export function Input({ className = '', ...props }) {
   return <input className={`${baseInputClasses} ${className}`} {...props} />

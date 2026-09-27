@@ -8,9 +8,11 @@ from slowapi.errors import RateLimitExceeded
 
 from app.api.router import api_router
 from app.config import get_settings
+from app.config.settings import assert_production_safety
 from app.utils.rate_limit import limiter
 
 settings = get_settings()
+assert_production_safety(settings)
 logging.basicConfig(level=logging.INFO if settings.DEBUG else logging.WARNING)
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)

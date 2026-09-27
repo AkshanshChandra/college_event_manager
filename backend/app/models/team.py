@@ -34,5 +34,6 @@ class TeamMember(Base, TimestampMixin):
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     team: Mapped["Team"] = relationship(back_populates="members")

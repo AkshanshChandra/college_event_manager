@@ -26,7 +26,7 @@ def list_public_domains(db: Session = Depends(get_db)) -> list[Domain]:
 def public_timeline(db: Session = Depends(get_db)) -> dict:
     round_settings = db.query(CompetitionSettings).filter_by(round_key=ROUND_1_KEY).one_or_none()
     return {
-        "google_form_url": settings.GOOGLE_FORM_URL,
+        "payment_per_person_inr": settings.PAYMENT_PER_PERSON_INR,
         "submission_start": round_settings.submission_start if round_settings else None,
         "submission_end": round_settings.submission_end if round_settings else None,
         "submission_window_status": window_status(round_settings) if round_settings else "not_open",

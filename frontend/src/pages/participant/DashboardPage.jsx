@@ -44,7 +44,7 @@ export function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card interactive>
           <CardHeader
             title="Problem Statement"
             action={<FileText size={18} className="text-ink-400" />}
@@ -59,7 +59,7 @@ export function DashboardPage() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card interactive>
           <CardHeader title="Latest Hint" action={<Lightbulb size={18} className="text-ink-400" />} />
           <CardBody>
             {latestHint ? (
@@ -80,7 +80,7 @@ export function DashboardPage() {
           </CardBody>
         </Card>
 
-        <Card>
+        <Card interactive>
           <CardHeader title="Submission" action={<UploadCloud size={18} className="text-ink-400" />} />
           <CardBody>
             <p className="text-sm text-ink-500">

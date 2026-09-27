@@ -1,7 +1,11 @@
-export function Card({ className = '', children, ...props }) {
+export function Card({ interactive = false, className = '', children, ...props }) {
   return (
     <div
-      className={`rounded-lg border border-ink-200 bg-surface shadow-[0_1px_2px_rgba(15,23,32,0.04)] ${className}`}
+      className={`rounded-lg border border-ink-200 bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-200 ${
+        interactive
+          ? 'hover:-translate-y-0.5 hover:border-accent-500/40 hover:shadow-[0_10px_28px_-6px_rgba(201,44,55,0.18)]'
+          : ''
+      } ${className}`}
       {...props}
     >
       {children}

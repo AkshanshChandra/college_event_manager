@@ -16,7 +16,13 @@ export const tokenStorage = {
   },
 }
 
-export const api = axios.create({ baseURL: '/api' })
+// Same-origin '/api' works when the frontend and backend are served behind
+// one reverse proxy (the recommended, simplest production topology). Set
+// VITE_API_BASE_URL only if the frontend is deployed on a separate origin
+// from the backend (e.g. a CDN-hosted SPA calling a different API domain).
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+export const api = axios.create({ baseURL: API_BASE_URL })
 
 api.interceptors.request.use((config) => {
   const token = tokenStorage.getAccess()
@@ -46,7 +52,7 @@ api.interceptors.response.use(
     try {
       refreshPromise =
         refreshPromise ||
-        axios.post('/api/auth/refresh', { refresh_token: refreshToken }).finally(() => {
+        axios.post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken }).finally(() => {
           refreshPromise = null
         })
       const { data } = await refreshPromise
