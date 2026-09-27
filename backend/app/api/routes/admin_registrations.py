@@ -124,22 +124,51 @@ def push_registrations_to_sheet(
     return SheetSyncResultOut(**result)
 
 
+MAX_TEAM_SIZE = 4  # matches RegistrationFormRequest — up to 3 members beyond the leader
+
+
+def _member_name_and_phone(member: dict | str) -> tuple[str, str]:
+    # Legacy CSV/Sheets-imported rows store plain name strings (no phone);
+    # the native registration form stores {"name": ..., "phone": ...} dicts.
+    if isinstance(member, dict):
+        return member.get("name", ""), member.get("phone", "")
+    return str(member), ""
+
+
 @router.get("/registrations/export")
 def export_registrations_csv(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> StreamingResponse:
     rows = db.query(Registration).order_by(Registration.registered_at.desc()).all()
     buffer = io.StringIO()
     writer = csv.writer(buffer)
+
+    member_headers = []
+    for i in range(2, MAX_TEAM_SIZE + 1):
+        member_headers += [f"Member {i} Name", f"Member {i} Phone"]
+
     writer.writerow(
-        ["Team Name", "Leader Name", "Email", "Phone", "College", "Degree Course", "Domain",
-         "Team Size", "Payment Status", "Payment Amount (INR)", "Payment Screenshot",
-         "Registered At", "Account Status"]
+        ["Registration ID", "Team Name", "Leader Name", "Leader Email", "Leader Phone",
+         "College", "Degree Course", "Domain", "Team Size"]
+        + member_headers
+        + ["Payment Status", "Payment Amount (INR)", "Payment Screenshot",
+           "Payment Screenshot Uploaded At", "Registered At", "Account Status"]
     )
     for r in rows:
+        member_cells = []
+        for i in range(MAX_TEAM_SIZE - 1):
+            if i < len(r.members_raw):
+                name, phone = _member_name_and_phone(r.members_raw[i])
+            else:
+                name, phone = "", ""
+            member_cells += [name, phone]
+
         writer.writerow(
-            [r.team_name, r.leader_name, r.leader_email, r.leader_phone, r.college, r.degree_course or "",
-             r.domain_slug, r.team_size or "", r.payment_status.value, r.payment_amount_inr or "",
-             r.payment_screenshot_filename or "Not uploaded",
-             r.registered_at.isoformat(), _account_status_for(db, r.leader_email)]
+            [r.id, r.team_name, r.leader_name, r.leader_email, r.leader_phone, r.college,
+             r.degree_course or "", r.domain_slug, r.team_size or ""]
+            + member_cells
+            + [r.payment_status.value, r.payment_amount_inr or "",
+               r.payment_screenshot_filename or "Not uploaded",
+               r.payment_screenshot_uploaded_at.isoformat() if r.payment_screenshot_uploaded_at else "",
+               r.registered_at.isoformat(), _account_status_for(db, r.leader_email)]
         )
     buffer.seek(0)
     return StreamingResponse(

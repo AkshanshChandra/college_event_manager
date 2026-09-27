@@ -34,11 +34,12 @@ class Settings(BaseSettings):
     PRESIGNED_URL_EXPIRE_SECONDS: int = 3600
 
     # Email
-    EMAIL_BACKEND: Literal["console", "smtp"] = "console"
+    EMAIL_BACKEND: Literal["console", "smtp", "resend"] = "console"
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
+    RESEND_API_KEY: str | None = None
     EMAIL_FROM_ADDRESS: str = "noreply@adappt.dev"
     EMAIL_FROM_NAME: str = "ADAPPT"
 

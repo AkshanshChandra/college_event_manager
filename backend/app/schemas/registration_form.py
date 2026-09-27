@@ -4,9 +4,21 @@ MIN_TEAM_SIZE = 1
 MAX_TEAM_SIZE = 4
 
 
+def _validate_10_digit_phone(value: str) -> str:
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if len(digits) != 10:
+        raise ValueError("Phone number must have exactly 10 digits.")
+    return digits
+
+
 class TeamMemberInput(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=32)
+
+    @field_validator("phone")
+    @classmethod
+    def phone_is_10_digits(cls, value: str) -> str:
+        return _validate_10_digit_phone(value)
 
 
 class RegistrationFormRequest(BaseModel):
@@ -19,6 +31,11 @@ class RegistrationFormRequest(BaseModel):
     domain_slug: str = Field(min_length=1, max_length=64)
     team_size: int = Field(ge=MIN_TEAM_SIZE, le=MAX_TEAM_SIZE)
     members: list[TeamMemberInput] = Field(default_factory=list)
+
+    @field_validator("mobile_number")
+    @classmethod
+    def mobile_number_is_10_digits(cls, value: str) -> str:
+        return _validate_10_digit_phone(value)
 
     @field_validator("members")
     @classmethod

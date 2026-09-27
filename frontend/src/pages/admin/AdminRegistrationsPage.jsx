@@ -22,6 +22,7 @@ export function AdminRegistrationsPage() {
   const [domains, setDomains] = useState([])
   const [page, setPage] = useState(1)
   const [updatingId, setUpdatingId] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     adminApi.listDomains().then(({ data }) => setDomains(data))
@@ -36,6 +37,25 @@ export function AdminRegistrationsPage() {
   }
 
   useEffect(load, [search, domain, page])
+
+  const handleExportCsv = async () => {
+    setExporting(true)
+    try {
+      const { data: blob } = await adminApi.exportRegistrationsCsv()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'adappt_registrations.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      notify(getErrorMessage(err, 'Could not export registrations.'), 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const setPaymentStatus = async (registration, next) => {
     setUpdatingId(registration.id)
@@ -61,11 +81,9 @@ export function AdminRegistrationsPage() {
         title="Registrations"
         description="Teams registered through the portal's registration form."
         action={
-          <a href={adminApi.exportRegistrationsUrl()}>
-            <Button variant="secondary">
-              <Download size={16} /> Export CSV
-            </Button>
-          </a>
+          <Button variant="secondary" loading={exporting} onClick={handleExportCsv}>
+            <Download size={16} /> Export CSV
+          </Button>
         }
       />
 

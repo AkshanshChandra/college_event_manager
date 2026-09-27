@@ -48,6 +48,8 @@ export function RegisterPage() {
 
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
 
+  const digitsOnly = (value) => value.replace(/\D/g, '').slice(0, 10)
+
   const updateTeamSize = (size) => {
     setForm((prev) => {
       const members = Array.from({ length: size - 1 }, (_, i) => prev.members[i] || { name: '', phone: '' })
@@ -82,7 +84,7 @@ export function RegisterPage() {
   const validate = () => {
     const next = {}
     if (!form.full_name.trim()) next.full_name = 'Required'
-    if (!/^[0-9+\s-]{7,15}$/.test(form.mobile_number.trim())) next.mobile_number = 'Enter a valid mobile number'
+    if (!/^[0-9]{10}$/.test(form.mobile_number.trim())) next.mobile_number = 'Enter a valid 10-digit mobile number'
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) next.email = 'Enter a valid email'
     if (!form.college_name.trim()) next.college_name = 'Required'
     if (!form.degree_course.trim()) next.degree_course = 'Required'
@@ -91,7 +93,7 @@ export function RegisterPage() {
     if (!form.domain_slug) next.domain_slug = 'Choose a domain'
     form.members.forEach((m, i) => {
       if (!m.name.trim()) next[`member_${i}_name`] = 'Required'
-      if (!/^[0-9+\s-]{7,15}$/.test(m.phone.trim())) next[`member_${i}_phone`] = 'Enter a valid phone number'
+      if (!/^[0-9]{10}$/.test(m.phone.trim())) next[`member_${i}_phone`] = 'Enter a valid 10-digit phone number'
     })
     setErrors(next)
     return Object.keys(next).length === 0
@@ -146,8 +148,10 @@ export function RegisterPage() {
                 <Field label="Mobile Number" error={errors.mobile_number}>
                   <Input
                     value={form.mobile_number}
-                    onChange={(e) => updateField('mobile_number', e.target.value)}
+                    onChange={(e) => updateField('mobile_number', digitsOnly(e.target.value))}
                     placeholder="10-digit mobile number"
+                    inputMode="numeric"
+                    maxLength={10}
                   />
                 </Field>
               </div>
@@ -242,7 +246,9 @@ export function RegisterPage() {
                   <Field label={`Member ${i + 2} Phone Number`} error={errors[`member_${i}_phone`]}>
                     <Input
                       value={member.phone}
-                      onChange={(e) => updateMember(i, 'phone', e.target.value)}
+                      onChange={(e) => updateMember(i, 'phone', digitsOnly(e.target.value))}
+                      inputMode="numeric"
+                      maxLength={10}
                     />
                   </Field>
                 </div>

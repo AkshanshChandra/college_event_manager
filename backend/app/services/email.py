@@ -29,6 +29,35 @@ class ConsoleEmailBackend(EmailBackend):
         )
 
 
+class ResendEmailBackend(EmailBackend):
+    """Transactional email via Resend's API (https://resend.com).
+
+    Recommended over raw Gmail SMTP for production: Resend lets you verify
+    your own sending domain (SPF/DKIM/DMARC), so mail is sent as
+    noreply@adappt.ietempstme.com instead of a personal Gmail address — the
+    single biggest lever for landing in the inbox instead of spam, since the
+    sender domain then matches the links in the email.
+    """
+
+    def __init__(self) -> None:
+        import resend
+
+        resend.api_key = settings.RESEND_API_KEY
+        self._resend = resend
+
+    def send(self, to: str, subject: str, html_body: str, text_body: str) -> None:
+        self._resend.Emails.send(
+            {
+                "from": f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>",
+                "to": [to],
+                "reply_to": settings.EMAIL_FROM_ADDRESS,
+                "subject": subject,
+                "html": html_body,
+                "text": text_body,
+            }
+        )
+
+
 class SMTPEmailBackend(EmailBackend):
     def send(self, to: str, subject: str, html_body: str, text_body: str) -> None:
         message = EmailMessage()
@@ -58,7 +87,9 @@ def get_email_backend() -> EmailBackend:
     global _email_instance
     if _email_instance is not None:
         return _email_instance
-    if settings.EMAIL_BACKEND == "smtp":
+    if settings.EMAIL_BACKEND == "resend":
+        _email_instance = ResendEmailBackend()
+    elif settings.EMAIL_BACKEND == "smtp":
         _email_instance = SMTPEmailBackend()
     else:
         _email_instance = ConsoleEmailBackend()

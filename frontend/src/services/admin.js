@@ -6,7 +6,10 @@ export const adminApi = {
   pushRegistrationsToSheet: () => api.post('/admin/registrations/sync-to-sheet'),
 
   listRegistrations: (params) => api.get('/admin/registrations', { params }),
-  exportRegistrationsUrl: () => '/api/admin/registrations/export',
+  // A plain <a href> can't carry the Authorization header this endpoint
+  // requires (browser navigation sends no auth headers at all), so the
+  // download has to go through axios as a blob and be saved client-side.
+  exportRegistrationsCsv: () => api.get('/admin/registrations/export', { responseType: 'blob' }),
   updatePaymentStatus: (id, paymentStatus) =>
     api.put(`/admin/registrations/${id}/payment-status`, { payment_status: paymentStatus }),
 
