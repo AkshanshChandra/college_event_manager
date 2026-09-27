@@ -114,6 +114,16 @@ _FOOTER_HTML = """
 """
 
 
+def _logo_header_html() -> str:
+    logo_url = f"{settings.FRONTEND_URL}/committee-logo.png"
+    return f"""
+    <div style="text-align:center;margin-bottom:16px;">
+      <img src="{logo_url}" alt="IETE Student Forum, MPSTME" width="56" height="56"
+        style="border-radius:50%;display:inline-block;">
+    </div>
+    """
+
+
 def send_activation_email(to: str, team_name: str, activation_url: str) -> None:
     subject = "Activate your ADAPPT portal account"
     text_body = (
@@ -124,6 +134,7 @@ def send_activation_email(to: str, team_name: str, activation_url: str) -> None:
     )
     html_body = f"""
     <div style="font-family: sans-serif; max-width: 480px; color:#111827;">
+      {_logo_header_html()}
       <h2>Activate your ADAPPT portal account</h2>
       <p>Your team <strong>{team_name}</strong> is registered for ADAPPT 5.0.</p>
       <p><a href="{activation_url}" style="background:#c92c37;color:#fff;padding:10px 20px;
@@ -144,6 +155,7 @@ def send_submission_confirmation_email(to: str, team_name: str, submitted_at: st
     )
     html_body = f"""
     <div style="font-family: sans-serif; max-width: 480px; color:#111827;">
+      {_logo_header_html()}
       <h2>Submission received</h2>
       <p>We received the Round 1 submission for <strong>{team_name}</strong> at {submitted_at} UTC.</p>
       {_FOOTER_HTML}
