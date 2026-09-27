@@ -31,6 +31,23 @@ def verify_local_download_signature(storage_key: str, expires_at: int, signature
     return hmac.compare_digest(expected, signature)
 
 
+def build_content_disposition(filename: str) -> str:
+    """A Content-Disposition value that's safe wherever HTTP headers only
+    tolerate ISO-8859-1 (e.g. S3's response-content-disposition parameter).
+
+    Real-world filenames routinely contain characters ISO-8859-1 can't
+    represent — e.g. macOS screenshot names use a narrow no-break space
+    (U+202F) between the time and AM/PM ("10.51.09 PM.png"), which is
+    invalid Latin-1 and made S3 reject the whole presigned URL. The fix is
+    the standard RFC 6266 pattern: an ASCII-only fallback name for old
+    clients, plus the exact filename UTF-8-percent-encoded for everyone
+    else — both fit in ISO-8859-1 since they're pure ASCII once encoded.
+    """
+    ascii_fallback = filename.encode("ascii", errors="ignore").decode("ascii").strip() or "download"
+    encoded = quote(filename, safe="")
+    return f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded}'
+
+
 @dataclass
 class PresignedUpload:
     """What the frontend needs to upload a file directly to the storage backend."""
@@ -137,7 +154,7 @@ class S3Storage(StorageBackend):
             Params={
                 "Bucket": self.bucket,
                 "Key": storage_key,
-                "ResponseContentDisposition": f'attachment; filename="{filename}"',
+                "ResponseContentDisposition": build_content_disposition(filename),
             },
             ExpiresIn=settings.PRESIGNED_URL_EXPIRE_SECONDS,
         )
