@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import require_admin
 from app.database import get_db
 from app.models import Registration, Submission, Team, User
-from app.models.enums import AccountStatus, PaymentStatus
+from app.models.enums import AccountStatus, PaymentMethod, PaymentStatus
 from app.schemas.admin import PaymentStatusUpdate, RegistrationListItemOut, SheetSyncResultOut
 from app.schemas.submission import SubmissionOut
 from app.schemas.team import TeamMemberOut, TeamOut
@@ -48,6 +48,7 @@ def _registration_to_out(db: Session, r: Registration) -> RegistrationListItemOu
         domain_slug=r.domain_slug,
         team_size=r.team_size,
         payment_status=r.payment_status.value,
+        payment_method=r.payment_method.value,
         payment_amount_inr=r.payment_amount_inr,
         payment_screenshot_url=screenshot_url,
         registered_at=r.registered_at,
@@ -59,6 +60,7 @@ def _registration_to_out(db: Session, r: Registration) -> RegistrationListItemOu
 def list_registrations(
     search: str | None = None,
     domain: str | None = None,
+    payment_method: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -75,6 +77,11 @@ def list_registrations(
         )
     if domain:
         query = query.filter(Registration.domain_slug == domain)
+    if payment_method:
+        try:
+            query = query.filter(Registration.payment_method == PaymentMethod(payment_method))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid payment method.")
 
     rows = query.order_by(Registration.registered_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return [_registration_to_out(db, r) for r in rows]
@@ -144,7 +151,7 @@ def export_registrations_csv(db: Session = Depends(get_db), _: User = Depends(re
         ["Registration ID", "Team Name", "Leader Name", "Leader Email", "Leader Phone",
          "College", "Degree Course", "Domain", "Team Size"]
         + member_headers
-        + ["Payment Status", "Payment Amount (INR)", "Payment Screenshot",
+        + ["Payment Method", "Payment Status", "Payment Amount (INR)", "Payment Screenshot",
            "Payment Screenshot Uploaded At", "Registered At", "Account Status"]
     )
     for r in rows:
@@ -160,7 +167,7 @@ def export_registrations_csv(db: Session = Depends(get_db), _: User = Depends(re
             [r.id, r.team_name, r.leader_name, r.leader_email, r.leader_phone, r.college,
              r.degree_course or "", r.domain_slug, r.team_size or ""]
             + member_cells
-            + [r.payment_status.value, r.payment_amount_inr or "",
+            + [r.payment_method.value, r.payment_status.value, r.payment_amount_inr or "",
                r.payment_screenshot_filename or "Not uploaded",
                r.payment_screenshot_uploaded_at.isoformat() if r.payment_screenshot_uploaded_at else "",
                r.registered_at.isoformat(), _account_status_for(db, r.leader_email)]

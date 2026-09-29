@@ -4,7 +4,7 @@ from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.enums import PaymentStatus, RegistrationSource, pg_enum
+from app.models.enums import PaymentMethod, PaymentStatus, RegistrationSource, pg_enum
 from app.models.mixins import TimestampMixin
 
 
@@ -42,6 +42,9 @@ class Registration(Base, TimestampMixin):
 
     payment_status: Mapped[PaymentStatus] = mapped_column(
         pg_enum(PaymentStatus), default=PaymentStatus.PENDING, server_default=PaymentStatus.PENDING.value
+    )
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        pg_enum(PaymentMethod), default=PaymentMethod.ONLINE, server_default=PaymentMethod.ONLINE.value
     )
     payment_amount_inr: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payment_screenshot_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)

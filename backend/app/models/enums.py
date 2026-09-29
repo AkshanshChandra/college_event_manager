@@ -61,3 +61,8 @@ class PaymentStatus(str, enum.Enum):
     PENDING = "pending"  # registered, no payment proof uploaded yet
     SUBMITTED = "submitted"  # payment screenshot uploaded, awaiting admin verification
     PAID = "paid"  # admin has verified the payment screenshot
+
+
+class PaymentMethod(str, enum.Enum):
+    ONLINE = "online"  # UPI, screenshot uploaded at registration time
+    CASH = "cash"  # pays a committee member in person; starts PENDING until collected

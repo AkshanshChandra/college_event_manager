@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, XCircle, Loader2, ArrowRight, ShieldCheck, MailCheck } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, ArrowRight, ArrowLeft, ShieldCheck, MailCheck, Banknote, Phone } from 'lucide-react'
 import { Brand } from '../../components/Brand'
 import { Button } from '../../components/ui/Button'
 import { Card, CardBody } from '../../components/ui/Card'
 import { Field, Input, Select } from '../../components/ui/Field'
 import { FileDropzone } from '../../components/ui/FileDropzone'
+import { ConfirmDialog } from '../../components/ui/Dialog'
 import { PageLoader } from '../../components/ui/States'
 import { publicApi, uploadsApi } from '../../services/team'
 import { registrationApi } from '../../services/registration'
@@ -15,6 +16,11 @@ import paymentQr from '../../assets/payment-qr.jpg'
 const PAYMENT_SCREENSHOT_ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf'
 const PAYMENT_SCREENSHOT_ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'pdf']
 const PAYMENT_SCREENSHOT_MAX_MB = 10
+
+const CASH_CONTACTS = [
+  { name: 'Arnab Mukhopadhyay', phone: '+918104530548' },
+  { name: 'Arushi Dube', phone: '+919137086087' },
+]
 
 const TEAM_SIZES = [1, 2, 3, 4]
 
@@ -36,9 +42,7 @@ export function RegisterPage() {
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
   const [teamNameStatus, setTeamNameStatus] = useState('idle') // idle | checking | available | taken
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
-  const [result, setResult] = useState(null)
+  const [step, setStep] = useState('form') // form | payment
   const teamNameCheckRef = useRef(0)
 
   useEffect(() => {
@@ -99,26 +103,22 @@ export function RegisterPage() {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = async (e) => {
+  const handleContinue = (e) => {
     e.preventDefault()
-    setSubmitError('')
     if (!validate()) return
-
-    setSubmitting(true)
-    try {
-      const { data } = await registrationApi.submit(form)
-      setResult(data)
-    } catch (err) {
-      setSubmitError(getErrorMessage(err, 'Could not submit your registration. Please try again.'))
-    } finally {
-      setSubmitting(false)
-    }
+    setStep('payment')
   }
 
   if (domains === null) return <PageLoader />
 
-  if (result) {
-    return <PaymentStep result={result} paymentPerPerson={paymentPerPerson} email={form.email.trim().toLowerCase()} />
+  if (step === 'payment') {
+    return (
+      <PaymentStep
+        form={form}
+        paymentPerPerson={paymentPerPerson}
+        onBack={() => setStep('form')}
+      />
+    )
   }
 
   return (
@@ -132,11 +132,11 @@ export function RegisterPage() {
           <CardBody className="p-6 sm:p-8">
             <h1 className="text-xl font-semibold text-ink-950">Register for ADAPPT</h1>
             <p className="mt-1 text-sm text-ink-500">
-              Fill in your team's details below. You'll pay the registration fee via UPI in the
-              next step.
+              Fill in your team's details below. You'll choose how to pay the registration fee in
+              the next step.
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
+            <form onSubmit={handleContinue} className="mt-6 flex flex-col gap-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Full Name" error={errors.full_name}>
                   <Input
@@ -259,9 +259,7 @@ export function RegisterPage() {
                 team of {form.team_size}: <strong>₹{form.team_size * paymentPerPerson}</strong>
               </div>
 
-              {submitError && <p className="text-sm text-danger-600">{submitError}</p>}
-
-              <Button type="submit" variant="accent" size="lg" loading={submitting} className="w-full">
+              <Button type="submit" variant="accent" size="lg" className="w-full">
                 Continue to Payment <ArrowRight size={16} />
               </Button>
             </form>
@@ -278,11 +276,15 @@ export function RegisterPage() {
 
 const emptyScreenshotSlot = { file: null, status: 'idle', progress: 0, error: '', meta: null }
 
-function PaymentStep({ result, paymentPerPerson, email }) {
+function PaymentStep({ form, paymentPerPerson, onBack }) {
   const [screenshot, setScreenshot] = useState(emptyScreenshotSlot)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [done, setDone] = useState(null) // { payment_method, team_name } once created
+  const [cashConfirmOpen, setCashConfirmOpen] = useState(false)
+  const [cashSubmitting, setCashSubmitting] = useState(false)
+
+  const paymentAmount = form.team_size * paymentPerPerson
 
   const uploadScreenshot = async (file) => {
     const ext = file.name.split('.').pop()?.toLowerCase()
@@ -309,11 +311,7 @@ function PaymentStep({ result, paymentPerPerson, email }) {
 
     setScreenshot({ file, status: 'uploading', progress: 0, error: '', meta: null })
     try {
-      const { data: presign } = await registrationApi.presignPaymentScreenshot(
-        result.registration_id,
-        email,
-        file
-      )
+      const { data: presign } = await registrationApi.presignPaymentScreenshot(file)
       await uploadsApi.uploadToUrl(presign.upload_url, file, (pct) =>
         setScreenshot((prev) => ({ ...prev, progress: pct }))
       )
@@ -334,20 +332,45 @@ function PaymentStep({ result, paymentPerPerson, email }) {
     }
   }
 
-  const handleSubmitProof = async () => {
+  const submitRegistration = async (paymentMethod, screenshotMeta) => {
+    const payload = {
+      ...form,
+      payment_method: paymentMethod,
+      ...(screenshotMeta ? { payment_screenshot: screenshotMeta } : {}),
+    }
+    const { data } = await registrationApi.submit(payload)
+    return data
+  }
+
+  const handleSubmitOnline = async () => {
     setSubmitError('')
     setSubmitting(true)
     try {
-      await registrationApi.confirmPaymentScreenshot(result.registration_id, email, screenshot.meta)
-      setSubmitted(true)
+      const data = await submitRegistration('online', screenshot.meta)
+      setDone(data)
     } catch (err) {
-      setSubmitError(getErrorMessage(err, 'Could not submit your payment screenshot. Please try again.'))
+      setSubmitError(getErrorMessage(err, 'Could not submit your registration. Please try again.'))
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (submitted) {
+  const handleConfirmCash = async () => {
+    setSubmitError('')
+    setCashSubmitting(true)
+    try {
+      const data = await submitRegistration('cash')
+      setDone(data)
+      setCashConfirmOpen(false)
+    } catch (err) {
+      setSubmitError(getErrorMessage(err, 'Could not submit your registration. Please try again.'))
+      setCashConfirmOpen(false)
+    } finally {
+      setCashSubmitting(false)
+    }
+  }
+
+  if (done) {
     return (
       <div className="min-h-screen bg-paper px-4 py-10">
         <div className="mx-auto max-w-md">
@@ -356,13 +379,45 @@ function PaymentStep({ result, paymentPerPerson, email }) {
           </div>
           <Card>
             <CardBody className="flex flex-col items-center gap-3 p-6 text-center sm:p-8">
-              <MailCheck size={32} className="text-success-600" />
-              <h1 className="text-xl font-semibold text-ink-950">Payment proof received</h1>
-              <p className="text-sm text-ink-500">
-                Our team will verify your payment for <strong className="text-ink-800">{result.team_name}</strong>.
-                You'll receive an email with your portal login credentials by the end of the day
-                once it's confirmed.
-              </p>
+              {done.payment_method === 'cash' ? (
+                <>
+                  <Banknote size={32} className="text-accent-600" />
+                  <h1 className="text-xl font-semibold text-ink-950">Registration pending</h1>
+                  <p className="text-sm text-ink-500">
+                    Your registration for <strong className="text-ink-800">{done.team_name}</strong> is
+                    pending. Please contact one of the following to hand over the cash payment of{' '}
+                    <strong className="text-ink-800">₹{done.payment_amount_inr}</strong>:
+                  </p>
+                  <div className="w-full space-y-2 text-left">
+                    {CASH_CONTACTS.map((c) => (
+                      <a
+                        key={c.phone}
+                        href={`tel:${c.phone}`}
+                        className="flex items-center justify-between rounded-md border border-ink-100 bg-ink-50 px-4 py-2.5 text-sm hover:border-accent-300"
+                      >
+                        <span className="font-medium text-ink-800">{c.name}</span>
+                        <span className="flex items-center gap-1.5 text-accent-700">
+                          <Phone size={14} /> {c.phone}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-ink-500">
+                    You'll receive your portal login credentials by email once the cash payment is
+                    confirmed.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <MailCheck size={32} className="text-success-600" />
+                  <h1 className="text-xl font-semibold text-ink-950">Payment proof received</h1>
+                  <p className="text-sm text-ink-500">
+                    Our team will verify your payment for <strong className="text-ink-800">{done.team_name}</strong>.
+                    You'll receive an email with your portal login credentials by the end of the day
+                    once it's confirmed.
+                  </p>
+                </>
+              )}
               <Link to="/" className="mt-2 text-sm font-medium text-accent-700 hover:underline">
                 Back to Home
               </Link>
@@ -382,12 +437,19 @@ function PaymentStep({ result, paymentPerPerson, email }) {
 
         <Card>
           <CardBody className="flex flex-col items-center gap-4 p-6 text-center sm:p-8">
-            <CheckCircle2 size={32} className="text-success-600" />
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-ink-500 hover:text-ink-800"
+            >
+              <ArrowLeft size={14} /> Edit registration details
+            </button>
+
             <div>
-              <h1 className="text-xl font-semibold text-ink-950">Registration received</h1>
+              <h1 className="text-xl font-semibold text-ink-950">Choose how to pay</h1>
               <p className="mt-1 text-sm text-ink-500">
-                Team <strong className="text-ink-800">{result.team_name}</strong> — {result.team_size}{' '}
-                member{result.team_size > 1 ? 's' : ''}
+                Team <strong className="text-ink-800">{form.team_name}</strong> — {form.team_size}{' '}
+                member{form.team_size > 1 ? 's' : ''}
               </p>
             </div>
 
@@ -400,7 +462,7 @@ function PaymentStep({ result, paymentPerPerson, email }) {
             <div className="w-full rounded-md border border-accent-100 bg-accent-50 px-4 py-3">
               <p className="text-sm text-neutral-700">Scan the QR code and pay via UPI.</p>
               <p className="mt-2 text-lg font-semibold text-accent-700">
-                ₹{result.payment_amount_inr} due (₹{paymentPerPerson} × {result.team_size})
+                ₹{paymentAmount} due (₹{paymentPerPerson} × {form.team_size})
               </p>
             </div>
 
@@ -426,9 +488,25 @@ function PaymentStep({ result, paymentPerPerson, email }) {
               className="w-full"
               disabled={screenshot.status !== 'done'}
               loading={submitting}
-              onClick={handleSubmitProof}
+              onClick={handleSubmitOnline}
             >
               Submit Payment Proof <ArrowRight size={16} />
+            </Button>
+
+            <div className="flex w-full items-center gap-3 text-xs text-ink-400">
+              <div className="h-px flex-1 bg-ink-100" />
+              or
+              <div className="h-px flex-1 bg-ink-100" />
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              onClick={() => setCashConfirmOpen(true)}
+            >
+              <Banknote size={16} /> Pay by Cash Instead
             </Button>
 
             <div className="flex items-start gap-2 text-left text-xs text-ink-500">
@@ -441,6 +519,16 @@ function PaymentStep({ result, paymentPerPerson, email }) {
           </CardBody>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={cashConfirmOpen}
+        onClose={() => setCashConfirmOpen(false)}
+        onConfirm={handleConfirmCash}
+        title="Pay by cash instead?"
+        description={`You'll need to hand over ₹${paymentAmount} in cash to one of the organizers listed on the next screen. Your registration will stay pending until they confirm they've received it.`}
+        confirmLabel="Yes, pay by cash"
+        loading={cashSubmitting}
+      />
     </div>
   )
 }

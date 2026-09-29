@@ -186,7 +186,7 @@ SHEET_HEADERS = (
     ["Registration ID", "Team Name", "Leader Name", "Leader Email", "Leader Phone",
      "College", "Degree Course", "Domain", "Team Size"]
     + _MEMBER_HEADERS
-    + ["Payment Status", "Payment Amount (INR)", "Payment Screenshot",
+    + ["Payment Method", "Payment Status", "Payment Amount (INR)", "Payment Screenshot",
        "Payment Screenshot Uploaded At", "Registered At", "Account Status"]
 )
 
@@ -226,7 +226,7 @@ def sync_registrations_to_sheet(db: Session) -> dict:
             [r.id, r.team_name, r.leader_name, r.leader_email, r.leader_phone, r.college,
              r.degree_course or "", r.domain_slug, r.team_size or ""]
             + member_cells
-            + [r.payment_status.value, r.payment_amount_inr or "",
+            + [r.payment_method.value, r.payment_status.value, r.payment_amount_inr or "",
                r.payment_screenshot_filename or "Not uploaded",
                r.payment_screenshot_uploaded_at.isoformat() if r.payment_screenshot_uploaded_at else "",
                r.registered_at.isoformat(), _account_status_for(db, r.leader_email)]

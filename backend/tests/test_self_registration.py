@@ -1,4 +1,7 @@
 def _valid_payload(**overrides):
+    # Cash by default — it's the simplest payment path (no screenshot
+    # upload plumbing needed) for tests that aren't about payment mechanics
+    # themselves; those live in test_payment_screenshot.py.
     payload = {
         "full_name": "Aditi Sharma",
         "mobile_number": "9876543210",
@@ -12,6 +15,7 @@ def _valid_payload(**overrides):
             {"name": "Rohan Mehta", "phone": "9876500001"},
             {"name": "Sana Iqbal", "phone": "9876500002"},
         ],
+        "payment_method": "cash",
     }
     payload.update(overrides)
     return payload
@@ -25,6 +29,29 @@ def test_registration_creates_team_with_correct_payment_amount(client, domains):
     assert body["team_size"] == 3
     assert body["payment_per_person_inr"] == 300
     assert body["payment_amount_inr"] == 900
+    assert body["payment_method"] == "cash"
+    assert body["payment_status"] == "pending"
+
+
+def test_online_payment_without_screenshot_is_rejected(client, domains):
+    resp = client.post("/api/registrations", json=_valid_payload(payment_method="online"))
+    assert resp.status_code == 422
+
+
+def test_cash_payment_with_screenshot_is_rejected(client, domains):
+    resp = client.post(
+        "/api/registrations",
+        json=_valid_payload(
+            payment_method="cash",
+            payment_screenshot={
+                "storage_key": "registrations/pending-payment/whatever.png",
+                "original_filename": "proof.png",
+                "content_type": "image/png",
+                "file_size_bytes": 100,
+            },
+        ),
+    )
+    assert resp.status_code == 422
 
 
 def test_registration_rejects_duplicate_team_name(client, domains):

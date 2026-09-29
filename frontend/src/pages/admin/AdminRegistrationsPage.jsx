@@ -19,6 +19,7 @@ export function AdminRegistrationsPage() {
   const [rows, setRows] = useState(null)
   const [search, setSearch] = useState('')
   const [domain, setDomain] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('')
   const [domains, setDomains] = useState([])
   const [page, setPage] = useState(1)
   const [updatingId, setUpdatingId] = useState(null)
@@ -33,10 +34,11 @@ export function AdminRegistrationsPage() {
     const params = { page, page_size: PAGE_SIZE }
     if (search) params.search = search
     if (domain) params.domain = domain
+    if (paymentMethod) params.payment_method = paymentMethod
     adminApi.listRegistrations(params).then(({ data }) => setRows(data))
   }
 
-  useEffect(load, [search, domain, page])
+  useEffect(load, [search, domain, paymentMethod, page])
 
   const handleExportCsv = async () => {
     setExporting(true)
@@ -115,6 +117,18 @@ export function AdminRegistrationsPage() {
             </option>
           ))}
         </Select>
+        <Select
+          className="w-44"
+          value={paymentMethod}
+          onChange={(e) => {
+            setPage(1)
+            setPaymentMethod(e.target.value)
+          }}
+        >
+          <option value="">All Payment Methods</option>
+          <option value="online">Online</option>
+          <option value="cash">Cash</option>
+        </Select>
       </div>
 
       {rows === null ? (
@@ -137,6 +151,7 @@ export function AdminRegistrationsPage() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <StatusBadge meta={PAYMENT_STATUS_META[r.payment_status]} />
+                    <Badge variant="neutral">{r.payment_method === 'cash' ? 'Cash' : 'Online'}</Badge>
                     {r.payment_amount_inr != null && (
                       <span className="text-xs text-ink-400">₹{r.payment_amount_inr}</span>
                     )}

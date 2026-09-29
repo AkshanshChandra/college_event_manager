@@ -124,12 +124,16 @@ def _logo_header_html() -> str:
     """
 
 
+_WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/LRCo4goT4Gz7Ci0h3sxcCq"
+
+
 def send_activation_email(to: str, team_name: str, activation_url: str) -> None:
     subject = "Activate your ADAPPT portal account"
     text_body = (
         f"Hi,\n\nYour team \"{team_name}\" is registered for ADAPPT 5.0.\n\n"
         f"Activate your portal account and set a password here:\n{activation_url}\n\n"
         f"This link expires in {settings.ACTIVATION_TOKEN_EXPIRE_HOURS} hours.\n\n"
+        f"Join the ADAPPT 5.0 WhatsApp group for updates and announcements:\n{_WHATSAPP_GROUP_URL}\n\n"
         f"— ADAPPT Organizing Committee" + _FOOTER_TEXT
     )
     html_body = f"""
@@ -141,6 +145,8 @@ def send_activation_email(to: str, team_name: str, activation_url: str) -> None:
         border-radius:6px;text-decoration:none;display:inline-block;">Activate account</a></p>
       <p style="color:#6b7280;font-size:13px;">This link expires in
         {settings.ACTIVATION_TOKEN_EXPIRE_HOURS} hours.</p>
+      <p>Join the ADAPPT 5.0 WhatsApp group for updates and announcements:<br>
+        <a href="{_WHATSAPP_GROUP_URL}" style="color:#25D366;font-weight:600;">{_WHATSAPP_GROUP_URL}</a></p>
       {_FOOTER_HTML}
     </div>
     """

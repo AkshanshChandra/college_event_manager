@@ -9,7 +9,7 @@ from app.models import User
 from app.models.enums import SubmissionFileType
 from app.schemas.submission import FileMetaIn, PresignRequest, PresignResponse, SubmissionOut, SubmitRequest
 from app.services.email import send_submission_confirmation_email
-from app.services.self_registration import get_registration_for_email_or_raise
+from app.services.self_registration import PENDING_PAYMENT_KEY_PREFIX
 from app.services.storage import LocalDiskStorage, get_storage, verify_local_download_signature
 from app.services.submissions import (
     FileMeta,
@@ -77,23 +77,23 @@ async def local_direct_upload(
 async def local_registration_payment_upload(
     request: Request,
     storage_key: str,
-    registration_id: int,
-    email: str,
-    db: Session = Depends(get_db),
+    expires: int,
+    sig: str,
 ) -> None:
     """Dev-only stand-in for an S3 presigned PUT, used by the unauthenticated
-    payment-screenshot step of registration (no JWT exists yet at this point
-    — the whole point is that portal access isn't granted until payment is
-    verified). Ownership is checked by registration_id + leader email match.
+    payment-screenshot step of registration (no JWT and no registration row
+    exist yet at this point — the registration is only created once this
+    upload is confirmed). The signature embedded in the URL is the
+    credential, exactly as it would be for a real presigned S3 PUT.
     """
     storage = get_storage()
     if not isinstance(storage, LocalDiskStorage):
         raise HTTPException(status_code=400, detail="Local upload endpoint is disabled.")
 
-    get_registration_for_email_or_raise(db, registration_id, email)
-    expected_prefix = f"registrations/{registration_id}/payment/"
-    if not storage_key.startswith(expected_prefix):
-        raise HTTPException(status_code=403, detail="Invalid storage key for this registration.")
+    if not verify_local_download_signature(storage_key, expires, sig):
+        raise HTTPException(status_code=403, detail="This upload link is invalid or has expired.")
+    if not storage_key.startswith(PENDING_PAYMENT_KEY_PREFIX):
+        raise HTTPException(status_code=400, detail="Invalid storage key.")
 
     import tempfile
 

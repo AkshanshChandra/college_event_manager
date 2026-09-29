@@ -6,11 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Domain, Registration
-from app.models.enums import DomainStatus, PaymentStatus, RegistrationSource
+from app.models.enums import DomainStatus, PaymentMethod, PaymentStatus, RegistrationSource
 from app.schemas.registration_form import RegistrationFormRequest
 from app.services.registration_sync import sync_registrations_to_sheet_safe
 
 settings = get_settings()
+
+PENDING_PAYMENT_KEY_PREFIX = "registrations/pending-payment/"
 
 
 def is_team_name_available(db: Session, team_name: str) -> bool:
@@ -23,6 +25,13 @@ def is_team_name_available(db: Session, team_name: str) -> bool:
 
 
 def create_self_registration(db: Session, payload: RegistrationFormRequest) -> Registration:
+    """Creates the registration row — the only entry point for one, atomically
+    including its payment outcome. Nothing is persisted for an incomplete
+    signup: online payments must already carry an uploaded screenshot, and
+    cash payments are recorded as pending-collection right away, so there's
+    never a row sitting around for someone who filled the form but abandoned
+    the payment step.
+    """
     domain = (
         db.query(Domain)
         .filter(Domain.slug == payload.domain_slug, Domain.status == DomainStatus.ACTIVE)
@@ -42,7 +51,7 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
             status_code=409, detail="A team has already registered with this email address."
         )
 
-    payment_amount = payload.team_size * settings.PAYMENT_PER_PERSON_INR
+    payment_method = PaymentMethod(payload.payment_method)
     now = datetime.now(timezone.utc)
 
     registration = Registration(
@@ -59,8 +68,24 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
         source=RegistrationSource.MANUAL,
         raw_row=payload.model_dump(mode="json"),
         synced_at=now,
-        payment_amount_inr=payment_amount,
+        payment_amount_inr=payload.team_size * settings.PAYMENT_PER_PERSON_INR,
+        payment_method=payment_method,
     )
+
+    if payment_method == PaymentMethod.ONLINE:
+        screenshot = payload.payment_screenshot
+        validate_payment_screenshot_or_raise(screenshot.original_filename, screenshot.file_size_bytes)
+        if not screenshot.storage_key.startswith(PENDING_PAYMENT_KEY_PREFIX):
+            raise HTTPException(status_code=400, detail="Invalid payment screenshot upload.")
+        registration.payment_screenshot_key = screenshot.storage_key
+        registration.payment_screenshot_filename = screenshot.original_filename
+        registration.payment_screenshot_uploaded_at = now
+        registration.payment_status = PaymentStatus.SUBMITTED
+    else:
+        # Cash: nothing to review yet — an admin marks it paid once the cash
+        # is physically collected, same as verifying an online screenshot.
+        registration.payment_status = PaymentStatus.PENDING
+
     db.add(registration)
     try:
         db.commit()
@@ -72,20 +97,6 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
         )
     db.refresh(registration)
     sync_registrations_to_sheet_safe(db)
-    return registration
-
-
-def get_registration_for_email_or_raise(db: Session, registration_id: int, email: str) -> Registration:
-    """Loose ownership check for the unauthenticated payment-screenshot flow:
-    the participant has no portal account yet at this point (that's the
-    whole point — payment isn't verified), so there's no JWT to check
-    against. Knowing both the registration id and its leader email is treated
-    as sufficient proof of ownership for uploading payment proof, which is
-    low-stakes (worst case is a wrong image needing re-upload).
-    """
-    registration = db.get(Registration, registration_id)
-    if registration is None or registration.leader_email != email.strip().lower():
-        raise HTTPException(status_code=404, detail="Registration not found.")
     return registration
 
 
@@ -103,23 +114,3 @@ def validate_payment_screenshot_or_raise(filename: str, file_size_bytes: int) ->
             status_code=400,
             detail=f"The selected file exceeds the allowed size of {settings.PAYMENT_SCREENSHOT_MAX_SIZE_MB}MB.",
         )
-
-
-def confirm_payment_screenshot(
-    db: Session,
-    registration: Registration,
-    storage_key: str,
-    original_filename: str,
-    file_size_bytes: int,
-) -> Registration:
-    validate_payment_screenshot_or_raise(original_filename, file_size_bytes)
-
-    registration.payment_screenshot_key = storage_key
-    registration.payment_screenshot_filename = original_filename
-    registration.payment_screenshot_uploaded_at = datetime.now(timezone.utc)
-    if registration.payment_status != PaymentStatus.PAID:
-        registration.payment_status = PaymentStatus.SUBMITTED
-    db.commit()
-    db.refresh(registration)
-    sync_registrations_to_sheet_safe(db)
-    return registration

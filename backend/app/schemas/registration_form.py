@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 MIN_TEAM_SIZE = 1
@@ -21,6 +23,13 @@ class TeamMemberInput(BaseModel):
         return _validate_10_digit_phone(value)
 
 
+class PaymentScreenshotMeta(BaseModel):
+    storage_key: str
+    original_filename: str
+    content_type: str
+    file_size_bytes: int
+
+
 class RegistrationFormRequest(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     mobile_number: str = Field(min_length=1, max_length=32)
@@ -31,6 +40,15 @@ class RegistrationFormRequest(BaseModel):
     domain_slug: str = Field(min_length=1, max_length=64)
     team_size: int = Field(ge=MIN_TEAM_SIZE, le=MAX_TEAM_SIZE)
     members: list[TeamMemberInput] = Field(default_factory=list)
+    # The registration is never persisted without one of these: an online
+    # payment must arrive with its screenshot already uploaded, and a cash
+    # payment must NOT carry one (there's nothing to review yet — an admin
+    # collects the cash in person and verifies it the same way).
+    payment_method: Literal["online", "cash"]
+    # validate_default=True: the "screenshot required for online" check must
+    # still run when the field is omitted entirely (its default), not just
+    # when it's explicitly sent as null.
+    payment_screenshot: PaymentScreenshotMeta | None = Field(default=None, validate_default=True)
 
     @field_validator("mobile_number")
     @classmethod
@@ -48,6 +66,18 @@ class RegistrationFormRequest(BaseModel):
             )
         return members
 
+    @field_validator("payment_screenshot")
+    @classmethod
+    def screenshot_matches_payment_method(
+        cls, value: PaymentScreenshotMeta | None, info
+    ) -> PaymentScreenshotMeta | None:
+        payment_method = info.data.get("payment_method")
+        if payment_method == "online" and value is None:
+            raise ValueError("A payment screenshot is required for online payments.")
+        if payment_method == "cash" and value is not None:
+            raise ValueError("A payment screenshot should not be provided for cash payments.")
+        return value
+
 
 class RegistrationFormResponse(BaseModel):
     registration_id: int
@@ -56,6 +86,8 @@ class RegistrationFormResponse(BaseModel):
     team_size: int
     payment_amount_inr: int
     payment_per_person_inr: int
+    payment_method: str
+    payment_status: str
 
 
 class TeamNameAvailabilityResponse(BaseModel):
@@ -63,7 +95,6 @@ class TeamNameAvailabilityResponse(BaseModel):
 
 
 class PaymentScreenshotPresignRequest(BaseModel):
-    email: EmailStr
     filename: str
     content_type: str
     file_size_bytes: int
@@ -73,16 +104,3 @@ class PaymentScreenshotPresignResponse(BaseModel):
     upload_url: str
     storage_key: str
     method: str
-
-
-class PaymentScreenshotConfirmRequest(BaseModel):
-    email: EmailStr
-    storage_key: str
-    original_filename: str
-    content_type: str
-    file_size_bytes: int
-
-
-class PaymentScreenshotConfirmResponse(BaseModel):
-    registration_id: int
-    payment_status: str

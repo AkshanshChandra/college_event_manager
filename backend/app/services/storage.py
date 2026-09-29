@@ -82,9 +82,14 @@ def _build_key(team_id: int, file_type: str, filename: str) -> str:
     return f"teams/{team_id}/{file_type}/{uuid.uuid4().hex}-{safe_name}"
 
 
-def build_registration_payment_key(registration_id: int, filename: str) -> str:
+def build_pending_payment_key(filename: str) -> str:
+    """Key for a payment screenshot uploaded before the registration it
+    belongs to exists yet — the registration is only created once this
+    upload (or a cash choice) is confirmed, so there's no registration id
+    to scope the key to.
+    """
     safe_name = Path(filename).name
-    return f"registrations/{registration_id}/payment/{uuid.uuid4().hex}-{safe_name}"
+    return f"registrations/pending-payment/{uuid.uuid4().hex}-{safe_name}"
 
 
 class LocalDiskStorage(StorageBackend):

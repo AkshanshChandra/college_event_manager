@@ -24,6 +24,7 @@ class RegistrationListItemOut(BaseModel):
     domain_slug: str
     team_size: int | None
     payment_status: str
+    payment_method: str
     payment_amount_inr: int | None
     payment_screenshot_url: str | None
     registered_at: datetime
