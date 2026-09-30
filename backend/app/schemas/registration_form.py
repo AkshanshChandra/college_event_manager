@@ -35,15 +35,11 @@ class RegistrationFormRequest(BaseModel):
     domain_slug: str = Field(min_length=1, max_length=64)
     team_size: int = Field(ge=MIN_TEAM_SIZE, le=MAX_TEAM_SIZE)
     members: list[TeamMemberInput] = Field(default_factory=list)
-    # The registration is never persisted without one of these: an online
-    # payment must arrive with its screenshot already uploaded, and a cash
-    # payment must NOT carry one (there's nothing to review yet — an admin
-    # collects the cash in person and verifies it the same way).
     payment_method: Literal["online", "cash"]
-    # validate_default=True: the "screenshot required for online" check must
-    # still run when the field is omitted entirely (its default), not just
-    # when it's explicitly sent as null.
-    payment_screenshot: PaymentScreenshotMeta | None = Field(default=None, validate_default=True)
+    # Optional even for online payments — a participant can confirm without
+    # a screenshot and add proof later; admins can filter for who hasn't.
+    # Never allowed for cash, where there's nothing to review at all.
+    payment_screenshot: PaymentScreenshotMeta | None = None
 
     @field_validator("mobile_number")
     @classmethod
@@ -63,13 +59,10 @@ class RegistrationFormRequest(BaseModel):
 
     @field_validator("payment_screenshot")
     @classmethod
-    def screenshot_matches_payment_method(
+    def screenshot_not_allowed_for_cash(
         cls, value: PaymentScreenshotMeta | None, info
     ) -> PaymentScreenshotMeta | None:
-        payment_method = info.data.get("payment_method")
-        if payment_method == "online" and value is None:
-            raise ValueError("A payment screenshot is required for online payments.")
-        if payment_method == "cash" and value is not None:
+        if info.data.get("payment_method") == "cash" and value is not None:
             raise ValueError("A payment screenshot should not be provided for cash payments.")
         return value
 

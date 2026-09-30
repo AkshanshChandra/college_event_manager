@@ -74,6 +74,7 @@ def list_registrations(
     search: str | None = None,
     domain: str | None = None,
     payment_method: str | None = None,
+    has_screenshot: bool | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -95,6 +96,11 @@ def list_registrations(
             query = query.filter(Registration.payment_method == PaymentMethod(payment_method))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid payment method.")
+    if has_screenshot is not None:
+        if has_screenshot:
+            query = query.filter(Registration.payment_screenshot_key.isnot(None))
+        else:
+            query = query.filter(Registration.payment_screenshot_key.is_(None))
 
     rows = query.order_by(Registration.registered_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return [_registration_to_out(db, r) for r in rows]

@@ -148,3 +148,42 @@ def test_admin_can_filter_registrations_by_payment_method(client, admin_user, do
     rows = resp.json()
     assert len(rows) == 1
     assert rows[0]["payment_method"] == "cash"
+
+
+def test_online_payment_screenshot_is_optional(client, domains):
+    resp = client.post(
+        "/api/registrations",
+        json=_base_payload(payment_method="online", email="online.noproof@example.com", team_name="Team No Proof"),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["payment_method"] == "online"
+    assert body["payment_status"] == "pending"
+
+
+def test_admin_can_filter_registrations_by_screenshot_presence(client, admin_user, domains):
+    _register_online(client)  # has a screenshot
+    client.post(
+        "/api/registrations",
+        json=_base_payload(
+            payment_method="online", email="online.noproof2@example.com", team_name="Team No Proof Two"
+        ),
+    )
+
+    admin_token = login(client, "admin@test.dev", "AdminPass123!")
+
+    resp = client.get(
+        "/api/admin/registrations", headers=auth_headers(admin_token), params={"has_screenshot": "true"}
+    )
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert len(rows) == 1
+    assert rows[0]["payment_screenshot_url"] is not None
+
+    resp = client.get(
+        "/api/admin/registrations", headers=auth_headers(admin_token), params={"has_screenshot": "false"}
+    )
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert len(rows) == 1
+    assert rows[0]["team_name"] == "Team No Proof Two"

@@ -27,10 +27,10 @@ def is_team_name_available(db: Session, team_name: str) -> bool:
 def create_self_registration(db: Session, payload: RegistrationFormRequest) -> Registration:
     """Creates the registration row — the only entry point for one, atomically
     including its payment outcome. Nothing is persisted for an incomplete
-    signup: online payments must already carry an uploaded screenshot, and
-    cash payments are recorded as pending-collection right away, so there's
+    signup: it's only created once the participant confirms a payment method,
+    whether or not an online payment carries a screenshot yet — so there's
     never a row sitting around for someone who filled the form but abandoned
-    the payment step.
+    it before that confirmation.
     """
     domain = (
         db.query(Domain)
@@ -72,8 +72,8 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
         payment_method=payment_method,
     )
 
-    if payment_method == PaymentMethod.ONLINE:
-        screenshot = payload.payment_screenshot
+    screenshot = payload.payment_screenshot
+    if screenshot is not None:
         validate_payment_screenshot_or_raise(screenshot.original_filename, screenshot.file_size_bytes)
         if not screenshot.storage_key.startswith(PENDING_PAYMENT_KEY_PREFIX):
             raise HTTPException(status_code=400, detail="Invalid payment screenshot upload.")
@@ -82,8 +82,8 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
         registration.payment_screenshot_uploaded_at = now
         registration.payment_status = PaymentStatus.SUBMITTED
     else:
-        # Cash: nothing to review yet — an admin marks it paid once the cash
-        # is physically collected, same as verifying an online screenshot.
+        # No proof yet (screenshot skipped, or cash) — an admin marks it paid
+        # once they've verified payment by whatever means.
         registration.payment_status = PaymentStatus.PENDING
 
     db.add(registration)

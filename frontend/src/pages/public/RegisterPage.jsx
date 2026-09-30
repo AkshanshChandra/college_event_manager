@@ -489,7 +489,7 @@ function PaymentStep({ form, paymentPerPerson, onBack }) {
                     confirmed.
                   </p>
                 </>
-              ) : (
+              ) : done.payment_status === 'submitted' ? (
                 <>
                   <MailCheck size={32} className="text-success-600" />
                   <h1 className="text-xl font-semibold text-ink-950">Payment proof received</h1>
@@ -497,6 +497,16 @@ function PaymentStep({ form, paymentPerPerson, onBack }) {
                     Our team will verify your payment for <strong className="text-ink-800">{done.team_name}</strong>.
                     You'll receive an email with your portal login credentials by the end of the day
                     once it's confirmed.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <MailCheck size={32} className="text-success-600" />
+                  <h1 className="text-xl font-semibold text-ink-950">Registration confirmed</h1>
+                  <p className="text-sm text-ink-500">
+                    Your registration for <strong className="text-ink-800">{done.team_name}</strong> is
+                    logged and pending payment verification. You'll receive an email with your portal
+                    login credentials once it's confirmed.
                   </p>
                 </>
               )}
@@ -550,7 +560,7 @@ function PaymentStep({ form, paymentPerPerson, onBack }) {
 
             <div className="w-full text-left">
               <FileDropzone
-                label="Upload Payment Screenshot"
+                label="Upload Payment Screenshot (optional)"
                 hint={`Allowed: ${PAYMENT_SCREENSHOT_ALLOWED.join(', ')} · Max ${PAYMENT_SCREENSHOT_MAX_MB}MB`}
                 accept={PAYMENT_SCREENSHOT_ACCEPT}
                 file={screenshot.file}
@@ -568,11 +578,11 @@ function PaymentStep({ form, paymentPerPerson, onBack }) {
               variant="accent"
               size="lg"
               className="w-full"
-              disabled={screenshot.status !== 'done'}
+              disabled={screenshot.status === 'uploading'}
               loading={submitting}
               onClick={handleSubmitOnline}
             >
-              Submit Payment Proof <ArrowRight size={16} />
+              {screenshot.status === 'done' ? 'Submit Payment Proof' : 'Confirm Payment'} <ArrowRight size={16} />
             </Button>
 
             <div className="flex w-full items-center gap-3 text-xs text-ink-400">

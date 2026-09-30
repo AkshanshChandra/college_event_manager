@@ -21,6 +21,7 @@ export function AdminRegistrationsPage() {
   const [search, setSearch] = useState('')
   const [domain, setDomain] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('')
+  const [hasScreenshot, setHasScreenshot] = useState('')
   const [domains, setDomains] = useState([])
   const [page, setPage] = useState(1)
   const [updatingId, setUpdatingId] = useState(null)
@@ -38,10 +39,11 @@ export function AdminRegistrationsPage() {
     if (search) params.search = search
     if (domain) params.domain = domain
     if (paymentMethod) params.payment_method = paymentMethod
+    if (hasScreenshot) params.has_screenshot = hasScreenshot === 'yes'
     adminApi.listRegistrations(params).then(({ data }) => setRows(data))
   }
 
-  useEffect(load, [search, domain, paymentMethod, page])
+  useEffect(load, [search, domain, paymentMethod, hasScreenshot, page])
 
   const handleExportCsv = async () => {
     setExporting(true)
@@ -143,6 +145,18 @@ export function AdminRegistrationsPage() {
           <option value="">All Payment Methods</option>
           <option value="online">Online</option>
           <option value="cash">Cash</option>
+        </Select>
+        <Select
+          className="w-48"
+          value={hasScreenshot}
+          onChange={(e) => {
+            setPage(1)
+            setHasScreenshot(e.target.value)
+          }}
+        >
+          <option value="">All Screenshots</option>
+          <option value="yes">Has Screenshot</option>
+          <option value="no">No Screenshot</option>
         </Select>
       </div>
 

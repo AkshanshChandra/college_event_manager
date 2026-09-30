@@ -33,9 +33,15 @@ def test_registration_creates_team_with_correct_payment_amount(client, domains):
     assert body["payment_status"] == "pending"
 
 
-def test_online_payment_without_screenshot_is_rejected(client, domains):
-    resp = client.post("/api/registrations", json=_valid_payload(payment_method="online"))
-    assert resp.status_code == 422
+def test_online_payment_without_screenshot_is_allowed_and_logged_as_pending(client, domains):
+    resp = client.post(
+        "/api/registrations",
+        json=_valid_payload(payment_method="online", email="online.noproof@example.com", team_name="Team No Proof"),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["payment_method"] == "online"
+    assert body["payment_status"] == "pending"
 
 
 def test_cash_payment_with_screenshot_is_rejected(client, domains):
