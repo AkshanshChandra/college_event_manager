@@ -2,15 +2,10 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.schemas.validators import validate_10_digit_phone
+
 MIN_TEAM_SIZE = 1
 MAX_TEAM_SIZE = 4
-
-
-def _validate_10_digit_phone(value: str) -> str:
-    digits = "".join(ch for ch in value if ch.isdigit())
-    if len(digits) != 10:
-        raise ValueError("Phone number must have exactly 10 digits.")
-    return digits
 
 
 class TeamMemberInput(BaseModel):
@@ -20,7 +15,7 @@ class TeamMemberInput(BaseModel):
     @field_validator("phone")
     @classmethod
     def phone_is_10_digits(cls, value: str) -> str:
-        return _validate_10_digit_phone(value)
+        return validate_10_digit_phone(value)
 
 
 class PaymentScreenshotMeta(BaseModel):
@@ -53,7 +48,7 @@ class RegistrationFormRequest(BaseModel):
     @field_validator("mobile_number")
     @classmethod
     def mobile_number_is_10_digits(cls, value: str) -> str:
-        return _validate_10_digit_phone(value)
+        return validate_10_digit_phone(value)
 
     @field_validator("members")
     @classmethod

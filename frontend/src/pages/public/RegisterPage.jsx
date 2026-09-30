@@ -11,7 +11,7 @@ import { PageLoader } from '../../components/ui/States'
 import { publicApi, uploadsApi } from '../../services/team'
 import { registrationApi } from '../../services/registration'
 import { getErrorMessage } from '../../services/api'
-import paymentQr from '../../assets/payment-qr.jpg'
+import paymentQr from '../../assets/payment-qr.png'
 
 const PAYMENT_SCREENSHOT_ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf'
 const PAYMENT_SCREENSHOT_ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'pdf']
@@ -42,7 +42,7 @@ export function RegisterPage() {
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
   const [teamNameStatus, setTeamNameStatus] = useState('idle') // idle | checking | available | taken
-  const [step, setStep] = useState('form') // form | payment
+  const [step, setStep] = useState('form') // form | review | payment
   const teamNameCheckRef = useRef(0)
 
   useEffect(() => {
@@ -106,17 +106,29 @@ export function RegisterPage() {
   const handleContinue = (e) => {
     e.preventDefault()
     if (!validate()) return
-    setStep('payment')
+    setStep('review')
   }
 
   if (domains === null) return <PageLoader />
+
+  if (step === 'review') {
+    return (
+      <ReviewStep
+        form={form}
+        domains={domains}
+        paymentPerPerson={paymentPerPerson}
+        onEdit={() => setStep('form')}
+        onConfirm={() => setStep('payment')}
+      />
+    )
+  }
 
   if (step === 'payment') {
     return (
       <PaymentStep
         form={form}
         paymentPerPerson={paymentPerPerson}
-        onBack={() => setStep('form')}
+        onBack={() => setStep('review')}
       />
     )
   }
@@ -269,6 +281,76 @@ export function RegisterPage() {
         <p className="mt-4 text-center text-sm text-ink-500">
           Already registered? <Link to="/login" className="font-medium text-accent-700 hover:underline">Portal Login</Link>
         </p>
+      </div>
+    </div>
+  )
+}
+
+function ReviewRow({ label, value }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-ink-100 py-2.5 last:border-0">
+      <span className="text-sm text-ink-500">{label}</span>
+      <span className="text-right text-sm font-medium text-ink-900">{value}</span>
+    </div>
+  )
+}
+
+function ReviewStep({ form, domains, paymentPerPerson, onEdit, onConfirm }) {
+  const domainName = domains.find((d) => d.slug === form.domain_slug)?.name || form.domain_slug
+  const paymentAmount = form.team_size * paymentPerPerson
+
+  return (
+    <div className="min-h-screen bg-paper px-4 py-10">
+      <div className="mx-auto max-w-lg">
+        <div className="mb-8 flex justify-center">
+          <Brand />
+        </div>
+
+        <Card>
+          <CardBody className="p-6 sm:p-8">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="mb-4 flex items-center gap-1.5 text-xs font-medium text-ink-500 hover:text-ink-800"
+            >
+              <ArrowLeft size={14} /> Edit details
+            </button>
+
+            <h1 className="text-xl font-semibold text-ink-950">Confirm your details</h1>
+            <p className="mt-1 text-sm text-ink-500">
+              Please double-check everything below — you won't be able to edit these details
+              yourself once you continue to payment.
+            </p>
+
+            <div className="mt-5">
+              <ReviewRow label="Full Name" value={form.full_name} />
+              <ReviewRow label="Mobile Number" value={form.mobile_number} />
+              <ReviewRow label="Email" value={form.email} />
+              <ReviewRow label="College" value={form.college_name} />
+              <ReviewRow label="Degree / Course" value={form.degree_course} />
+              <ReviewRow label="Team Name" value={form.team_name} />
+              <ReviewRow label="Domain" value={domainName} />
+              <ReviewRow label="Team Size" value={`${form.team_size} member${form.team_size > 1 ? 's' : ''}`} />
+              {form.members.map((m, i) => (
+                <ReviewRow key={i} label={`Member ${i + 2}`} value={`${m.name} · ${m.phone}`} />
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-md border border-ink-100 bg-ink-50 px-4 py-3 text-sm text-ink-700">
+              Registration fee due: <strong>₹{paymentAmount}</strong> (₹{paymentPerPerson} ×{' '}
+              {form.team_size})
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2">
+              <Button variant="accent" size="lg" className="w-full" onClick={onConfirm}>
+                Confirm &amp; Continue to Payment <ArrowRight size={16} />
+              </Button>
+              <Button variant="secondary" size="lg" className="w-full" onClick={onEdit}>
+                Edit Details
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
       </div>
     </div>
   )
@@ -442,7 +524,7 @@ function PaymentStep({ form, paymentPerPerson, onBack }) {
               onClick={onBack}
               className="flex w-full items-center gap-1.5 text-left text-xs font-medium text-ink-500 hover:text-ink-800"
             >
-              <ArrowLeft size={14} /> Edit registration details
+              <ArrowLeft size={14} /> Back to review
             </button>
 
             <div>

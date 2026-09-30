@@ -12,6 +12,8 @@ export const adminApi = {
   exportRegistrationsCsv: () => api.get('/admin/registrations/export', { responseType: 'blob' }),
   updatePaymentStatus: (id, paymentStatus) =>
     api.put(`/admin/registrations/${id}/payment-status`, { payment_status: paymentStatus }),
+  updateRegistration: (id, payload) => api.put(`/admin/registrations/${id}`, payload),
+  resendRegistrationEmail: (id) => api.post(`/admin/registrations/${id}/resend-email`),
 
   listTeams: (params) => api.get('/admin/teams', { params }),
   getTeamDetail: (teamId) => api.get(`/admin/teams/${teamId}`),
