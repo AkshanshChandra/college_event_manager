@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin
 from app.database import get_db
-from app.models import Domain, Hint, ProblemStatement, User
+from app.models import Blog, Domain, ProblemStatement, User
+from app.schemas.blog import BlogCreate, BlogOut, BlogUpdate
 from app.schemas.domain import DomainCreate, DomainOut, DomainUpdate
-from app.schemas.hint import HintCreate, HintOut, HintUpdate
 from app.schemas.problem_statement import ProblemStatementCreate, ProblemStatementOut, ProblemStatementUpdate
 from app.services.audit import log_action
 
@@ -108,43 +109,63 @@ def set_problem_statement_status(
     return ps
 
 
-# --- Hints -----------------------------------------------------------------
+# --- Blogs -----------------------------------------------------------------
+# A one-time (not recurring) background-reading article per domain — at
+# most one Blog row per domain_id, enforced by a unique DB constraint.
 
-@router.get("/hints", response_model=list[HintOut])
-def list_hints(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> list[Hint]:
-    return db.query(Hint).order_by(Hint.week_number.asc()).all()
-
-
-@router.post("/hints", response_model=HintOut)
-def create_hint(payload: HintCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)) -> Hint:
-    hint = Hint(**payload.model_dump())
-    db.add(hint)
-    db.commit()
-    db.refresh(hint)
-    log_action(db, admin, "create_hint", "hint", hint.id, {"title": hint.title})
-    return hint
+@router.get("/blogs", response_model=list[BlogOut])
+def list_blogs(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> list[Blog]:
+    return db.query(Blog).order_by(Blog.domain_id.asc()).all()
 
 
-@router.put("/hints/{hint_id}", response_model=HintOut)
-def update_hint(
-    hint_id: int, payload: HintUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
-) -> Hint:
-    hint = db.get(Hint, hint_id)
-    if hint is None:
-        raise HTTPException(status_code=404, detail="Hint not found.")
+@router.post("/blogs", response_model=BlogOut)
+def create_blog(payload: BlogCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)) -> Blog:
+    blog = Blog(**payload.model_dump())
+    db.add(blog)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="This domain already has a blog article.")
+    db.refresh(blog)
+    log_action(db, admin, "create_blog", "blog", blog.id, {"title": blog.title})
+    return blog
+
+
+@router.put("/blogs/{blog_id}", response_model=BlogOut)
+def update_blog(
+    blog_id: int, payload: BlogUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> Blog:
+    blog = db.get(Blog, blog_id)
+    if blog is None:
+        raise HTTPException(status_code=404, detail="Blog not found.")
     for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(hint, field, value)
+        setattr(blog, field, value)
     db.commit()
-    db.refresh(hint)
-    log_action(db, admin, "update_hint", "hint", hint.id)
-    return hint
+    db.refresh(blog)
+    log_action(db, admin, "update_blog", "blog", blog.id)
+    return blog
 
 
-@router.delete("/hints/{hint_id}", status_code=204)
-def delete_hint(hint_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)) -> None:
-    hint = db.get(Hint, hint_id)
-    if hint is None:
-        raise HTTPException(status_code=404, detail="Hint not found.")
-    db.delete(hint)
+@router.delete("/blogs/{blog_id}", status_code=204)
+def delete_blog(blog_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)) -> None:
+    blog = db.get(Blog, blog_id)
+    if blog is None:
+        raise HTTPException(status_code=404, detail="Blog not found.")
+    db.delete(blog)
     db.commit()
-    log_action(db, admin, "delete_hint", "hint", hint_id)
+    log_action(db, admin, "delete_blog", "blog", blog_id)
+
+
+@router.put("/blogs/{blog_id}/publish", response_model=BlogOut)
+def set_blog_status(
+    blog_id: int, status: str, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> Blog:
+    blog = db.get(Blog, blog_id)
+    if blog is None:
+        raise HTTPException(status_code=404, detail="Blog not found.")
+    blog.status = status
+    db.commit()
+    db.refresh(blog)
+    log_action(db, admin, f"set_blog_status:{status}", "blog", blog.id)
+    return blog

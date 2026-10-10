@@ -29,10 +29,11 @@ export const adminApi = {
   setProblemStatementStatus: (id, status) =>
     api.put(`/admin/problem-statements/${id}/publish`, null, { params: { status } }),
 
-  listHints: () => api.get('/admin/hints'),
-  createHint: (payload) => api.post('/admin/hints', payload),
-  updateHint: (id, payload) => api.put(`/admin/hints/${id}`, payload),
-  deleteHint: (id) => api.delete(`/admin/hints/${id}`),
+  listBlogs: () => api.get('/admin/blogs'),
+  createBlog: (payload) => api.post('/admin/blogs', payload),
+  updateBlog: (id, payload) => api.put(`/admin/blogs/${id}`, payload),
+  deleteBlog: (id) => api.delete(`/admin/blogs/${id}`),
+  setBlogStatus: (id, status) => api.put(`/admin/blogs/${id}/publish`, null, { params: { status } }),
 
   listSubmissions: (params) => api.get('/admin/submissions', { params }),
   getSubmissionDetail: (id) => api.get(`/admin/submissions/${id}`),

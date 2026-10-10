@@ -2,8 +2,7 @@
 
 Seeds only real content: the three domains, their problem statements (see
 scripts/seed_data.py), Round 1 competition settings, and one admin account
-using credentials YOU supply — no demo teams, no hardcoded password, no
-sample hints.
+using credentials YOU supply — no demo teams, no hardcoded password.
 
 Safe to re-run: existing rows are updated in place, nothing is duplicated.
 
@@ -65,7 +64,7 @@ def run() -> None:
             "\nBootstrap complete. Remaining manual steps before launch:\n"
             "  - Log in as admin and review/publish the seeded problem statements.\n"
             "  - Set the real Round 1 submission_start date (Competition Settings).\n"
-            "  - Add real weekly hints (none are seeded here).\n"
+            "  - Add each domain's blog article (none are seeded here).\n"
             "  - Configure Google Sheets sync if you want it (optional).\n"
         )
     finally:

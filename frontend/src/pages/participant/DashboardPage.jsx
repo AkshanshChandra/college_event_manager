@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { FileText, Lightbulb, UploadCloud, Clock, ArrowRight } from 'lucide-react'
+import { FileText, Newspaper, UploadCloud, Clock, ArrowRight } from 'lucide-react'
 import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -11,14 +11,14 @@ import { SUBMISSION_STATUS_META, formatDateTime } from '../../utils/status'
 export function DashboardPage() {
   const { team } = useOutletContext()
   const [state, setState] = useState(null)
-  const [hints, setHints] = useState(null)
+  const [blog, setBlog] = useState(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    Promise.all([teamApi.getSubmissionState(), teamApi.getHints()])
-      .then(([subRes, hintsRes]) => {
+    Promise.all([teamApi.getSubmissionState(), teamApi.getBlog()])
+      .then(([subRes, blogRes]) => {
         setState(subRes.data)
-        setHints(hintsRes.data)
+        setBlog(blogRes.data)
       })
       .catch(() => setError(true))
   }, [])
@@ -26,7 +26,6 @@ export function DashboardPage() {
   if (error) return <ErrorState description="Could not load your dashboard. Try refreshing." />
   if (!state) return <PageLoader />
 
-  const latestHint = hints?.[hints.length - 1]
   const statusMeta = SUBMISSION_STATUS_META[state.participant_status]
 
   return (
@@ -60,21 +59,19 @@ export function DashboardPage() {
         </Card>
 
         <Card interactive>
-          <CardHeader title="Latest Hint" action={<Lightbulb size={18} className="text-ink-400" />} />
+          <CardHeader title="Domain Blog" action={<Newspaper size={18} className="text-ink-400" />} />
           <CardBody>
-            {latestHint ? (
+            {blog ? (
               <>
-                <p className="text-sm font-medium text-ink-900">
-                  Week {latestHint.week_number}: {latestHint.title}
-                </p>
-                <p className="mt-1 line-clamp-2 text-sm text-ink-500">{latestHint.content}</p>
+                <p className="text-sm font-medium text-ink-900">{blog.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-ink-500">{blog.content}</p>
               </>
             ) : (
-              <p className="text-sm text-ink-500">No hints published yet.</p>
+              <p className="text-sm text-ink-500">No blog published yet for your domain.</p>
             )}
-            <Link to="/hints">
+            <Link to="/blog">
               <Button variant="secondary" size="sm" className="mt-3">
-                View All Hints <ArrowRight size={14} />
+                Read the Blog <ArrowRight size={14} />
               </Button>
             </Link>
           </CardBody>

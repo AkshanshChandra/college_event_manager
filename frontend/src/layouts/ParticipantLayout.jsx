@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
-  Lightbulb,
+  Newspaper,
   UploadCloud,
   Users,
   LogOut,
@@ -17,7 +17,7 @@ import { teamApi } from '../services/team'
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/problem-statement', label: 'Problem Statement', icon: FileText },
-  { to: '/hints', label: 'Weekly Hints', icon: Lightbulb },
+  { to: '/blog', label: 'Domain Blog', icon: Newspaper },
   { to: '/submission', label: 'Submission', icon: UploadCloud },
   { to: '/team', label: 'Team', icon: Users },
 ]

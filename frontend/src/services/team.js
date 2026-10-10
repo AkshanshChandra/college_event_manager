@@ -4,7 +4,7 @@ import { api, tokenStorage } from './api'
 export const teamApi = {
   getTeam: () => api.get('/team'),
   getProblemStatements: () => api.get('/team/problem-statements'),
-  getHints: () => api.get('/team/hints'),
+  getBlog: () => api.get('/team/blog'),
   getSubmissionState: () => api.get('/team/submission'),
 }
 

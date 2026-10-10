@@ -241,23 +241,6 @@ export function LandingPage() {
               at MPSTME, Mumbai.
             </p>
           </div>
-
-          <div className="mt-4">
-            <Card interactive>
-              <CardBody className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-accent-600/30 bg-accent-600/10 text-accent-500">
-                  <Lightbulb size={18} />
-                </span>
-                <div>
-                  <h3 className="font-medium text-ink-900">Weekly Hints</h3>
-                  <p className="text-sm text-ink-500">
-                    Organizers publish guidance between rounds to help teams refine their idea and
-                    stay on track.
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
         </div>
       </section>
 

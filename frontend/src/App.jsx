@@ -16,7 +16,7 @@ import { RegisterPage } from './pages/public/RegisterPage'
 
 import { DashboardPage } from './pages/participant/DashboardPage'
 import { ProblemStatementPage } from './pages/participant/ProblemStatementPage'
-import { HintsPage } from './pages/participant/HintsPage'
+import { BlogPage } from './pages/participant/BlogPage'
 import { SubmissionPage } from './pages/participant/SubmissionPage'
 import { TeamPage } from './pages/participant/TeamPage'
 
@@ -26,7 +26,7 @@ import { AdminTeamsPage } from './pages/admin/AdminTeamsPage'
 import { AdminTeamDetailPage } from './pages/admin/AdminTeamDetailPage'
 import { AdminDomainsPage } from './pages/admin/AdminDomainsPage'
 import { AdminProblemStatementsPage } from './pages/admin/AdminProblemStatementsPage'
-import { AdminHintsPage } from './pages/admin/AdminHintsPage'
+import { AdminBlogsPage } from './pages/admin/AdminBlogsPage'
 import { AdminSubmissionsPage } from './pages/admin/AdminSubmissionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
@@ -52,7 +52,7 @@ export default function App() {
               <Route element={<ParticipantLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/problem-statement" element={<ProblemStatementPage />} />
-                <Route path="/hints" element={<HintsPage />} />
+                <Route path="/blog" element={<BlogPage />} />
                 <Route path="/submission" element={<SubmissionPage />} />
                 <Route path="/team" element={<TeamPage />} />
               </Route>
@@ -67,7 +67,7 @@ export default function App() {
                 <Route path="/admin/teams/:teamId" element={<AdminTeamDetailPage />} />
                 <Route path="/admin/domains" element={<AdminDomainsPage />} />
                 <Route path="/admin/problem-statements" element={<AdminProblemStatementsPage />} />
-                <Route path="/admin/hints" element={<AdminHintsPage />} />
+                <Route path="/admin/blogs" element={<AdminBlogsPage />} />
                 <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
                 <Route path="/admin/settings" element={<AdminSettingsPage />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />

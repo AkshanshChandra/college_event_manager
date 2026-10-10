@@ -52,11 +52,6 @@ class RegistrationSource(str, enum.Enum):
     MANUAL = "manual"
 
 
-class HintScope(str, enum.Enum):
-    GLOBAL = "global"
-    DOMAIN = "domain"
-
-
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"  # registered, no payment proof uploaded yet
     SUBMITTED = "submitted"  # payment screenshot uploaded, awaiting admin verification

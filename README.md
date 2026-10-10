@@ -1,8 +1,8 @@
 # ADAPPT Competition Portal
 
 A team-based technology competition platform: Google Form registration sync, domain-specific
-problem statements, weekly hints, and a Round 1 submission pipeline (PPT/PDF + demo video) with
-S3-backed storage and organizer administration.
+problem statements, a one-time background-reading blog per domain, and a Round 1 submission
+pipeline (PPT/PDF + demo video) with S3-backed storage and organizer administration.
 
 ## 1. Architecture
 
@@ -195,9 +195,9 @@ python -m scripts.seed
 Creates (all clearly marked `[SAMPLE]` where user-facing): an admin account
 (`admin@adappt.dev` / `ChangeMe123!` — **change this immediately**), the three competition domains
 (Cybersecurity in Smart Homes, AI in FoodTech, Robotics and Automation in Natural Disaster
-Management) with sample problem statements, two sample hints, Round 1 competition settings, and
-imports the bundled `dev_data/registrations.csv` via the legacy bulk-import path (for local
-dev/demo teams only — real registrations come through `/register`).
+Management) with sample problem statements, Round 1 competition settings, and imports the bundled
+`dev_data/registrations.csv` via the legacy bulk-import path (for local dev/demo teams only — real
+registrations come through `/register`).
 
 ## 12. Tests
 
@@ -208,7 +208,7 @@ pytest
 ```
 
 Covers: activation/login flow, unregistered-email rejection, cross-team data isolation,
-domain-scoped problem statement/hint visibility, submission deadline enforcement, file
+domain-scoped problem statement/blog visibility, submission deadline enforcement, file
 type/size validation, and admin-only route protection.
 
 ## 13. Production Deployment
@@ -228,8 +228,8 @@ type/size validation, and admin-only route protection.
 - Portal accounts are activated via a single-use, expiring, hashed token — never a permanent
   emailed password.
 - All admin routes require `role=admin`; all participant routes require `role=participant` and a
-  bound `team_id`. Cross-team access to problem statements, hints, and submissions is enforced
-  server-side, not just hidden in the UI.
+  bound `team_id`. Cross-team access to problem statements, the domain blog, and submissions is
+  enforced server-side, not just hidden in the UI.
 - Upload deadlines and file type/size limits are enforced server-side
   (`app/services/submissions.py`), not just disabled in the UI.
 - S3 objects are private; downloads go through short-lived presigned URLs generated only by

@@ -1,13 +1,11 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_participant
 from app.database import get_db
-from app.models import Hint, ProblemStatement, User
+from app.models import Blog, ProblemStatement, User
 from app.models.enums import PublishStatus
-from app.schemas.hint import HintOut
+from app.schemas.blog import BlogOut
 from app.schemas.problem_statement import ProblemStatementOut
 from app.schemas.submission import SubmissionOut, TeamSubmissionStateOut
 from app.schemas.team import TeamMemberOut, TeamOut
@@ -48,23 +46,18 @@ def get_my_problem_statements(
     )
 
 
-@router.get("/hints", response_model=list[HintOut])
-def get_my_hints(
+@router.get("/blog", response_model=BlogOut | None)
+def get_my_blog(
     current_user: User = Depends(require_participant), db: Session = Depends(get_db)
-) -> list[Hint]:
-    now = datetime.now(timezone.utc)
-    domain_id = current_user.team.domain_id
-    hints = (
-        db.query(Hint)
+) -> Blog | None:
+    return (
+        db.query(Blog)
         .filter(
-            Hint.status == PublishStatus.PUBLISHED,
-            Hint.publish_at <= now,
-            (Hint.domain_id == domain_id) | (Hint.domain_id.is_(None)),
+            Blog.domain_id == current_user.team.domain_id,
+            Blog.status == PublishStatus.PUBLISHED,
         )
-        .order_by(Hint.week_number.asc())
-        .all()
+        .one_or_none()
     )
-    return hints
 
 
 @router.get("/submission", response_model=TeamSubmissionStateOut)

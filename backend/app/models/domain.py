@@ -23,4 +23,6 @@ class Domain(Base, TimestampMixin):
         order_by="ProblemStatement.order_index",
     )
     teams: Mapped[list["Team"]] = relationship(back_populates="domain")
-    hints: Mapped[list["Hint"]] = relationship(back_populates="domain")
+    blog: Mapped["Blog | None"] = relationship(
+        back_populates="domain", uselist=False, cascade="all, delete-orphan"
+    )
