@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Search, Download, Eye } from 'lucide-react'
+import { Search, Download, Eye, FolderArchive } from 'lucide-react'
 import { PageHeader } from '../../components/PageHeader'
 import { Input, Select } from '../../components/ui/Field'
 import { Table, Td } from '../../components/ui/Table'
 import { Badge } from '../../components/ui/Badge'
+import { Button } from '../../components/ui/Button'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Dialog } from '../../components/ui/Dialog'
 import { PageLoader, EmptyState } from '../../components/ui/States'
 import { adminApi } from '../../services/admin'
+import { getErrorMessage } from '../../services/api'
+import { useToast } from '../../hooks/useToast'
 import { SUBMISSION_STATUS_META, formatBytes, formatDateTime } from '../../utils/status'
 
 export function AdminSubmissionsPage() {
+  const { notify } = useToast()
   const [rows, setRows] = useState(null)
   const [domains, setDomains] = useState([])
   const [search, setSearch] = useState('')
   const [domain, setDomain] = useState('')
   const [detailId, setDetailId] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     adminApi.listDomains().then(({ data }) => setDomains(data))
@@ -35,9 +40,36 @@ export function AdminSubmissionsPage() {
     else setDetail(null)
   }, [detailId])
 
+  const handleExportZip = async () => {
+    setExporting(true)
+    try {
+      const { data: blob } = await adminApi.exportSubmissionsZip()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'adappt_submissions.zip'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      notify(getErrorMessage(err, 'Could not export submissions.'), 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div>
-      <PageHeader title="Submissions" description="Active Round 1 submissions from every team." />
+      <PageHeader
+        title="Submissions"
+        description="Active Round 1 submissions from every team."
+        action={
+          <Button variant="secondary" loading={exporting} onClick={handleExportZip}>
+            <FolderArchive size={16} /> Download All (ZIP)
+          </Button>
+        }
+      />
 
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="relative w-full max-w-xs">

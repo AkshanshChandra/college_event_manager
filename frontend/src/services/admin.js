@@ -37,6 +37,7 @@ export const adminApi = {
 
   listSubmissions: (params) => api.get('/admin/submissions', { params }),
   getSubmissionDetail: (id) => api.get(`/admin/submissions/${id}`),
+  exportSubmissionsZip: () => api.get('/admin/submissions/export-zip', { responseType: 'blob' }),
 
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (payload) => api.put('/admin/settings', payload),

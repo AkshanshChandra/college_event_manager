@@ -1,5 +1,13 @@
+import os
+import re
+import shutil
+import tempfile
+import zipfile
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
+from starlette.responses import FileResponse
 
 from app.auth.dependencies import require_admin
 from app.database import get_db
@@ -8,6 +16,13 @@ from app.services.audit import log_action
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+_UNSAFE_PATH_CHARS = re.compile(r'[\\/:*?"<>|]')
+
+
+def _safe_folder_name(name: str) -> str:
+    cleaned = _UNSAFE_PATH_CHARS.sub("-", name).strip()
+    return cleaned or "untitled"
 
 
 @router.get("/submissions")
@@ -42,6 +57,50 @@ def list_submissions(
             }
         )
     return results
+
+
+@router.get("/submissions/export-zip")
+def export_submissions_zip(
+    db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> FileResponse:
+    """Streams every team's active Round 1 submission into one zip, organized
+    as <domain>/<team>/<file>, so organizers can grab everything in one go
+    instead of downloading each file individually.
+    """
+    submissions = (
+        db.query(Submission).filter(Submission.is_active_version.is_(True)).join(Team).all()
+    )
+    if not submissions:
+        raise HTTPException(status_code=404, detail="No submissions to export yet.")
+
+    storage = get_storage()
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+    tmp.close()
+
+    try:
+        with zipfile.ZipFile(tmp.name, mode="w", compression=zipfile.ZIP_STORED) as zf:
+            for submission in submissions:
+                team = submission.team
+                folder = f"{_safe_folder_name(team.domain.name)}/{_safe_folder_name(team.name)}"
+                for f in submission.files:
+                    stream = storage.open_read_stream(f.storage_key)
+                    try:
+                        with zf.open(f"{folder}/{f.original_filename}", mode="w") as dest:
+                            shutil.copyfileobj(stream, dest, length=1024 * 1024)
+                    finally:
+                        stream.close()
+    except Exception:
+        os.unlink(tmp.name)
+        raise
+
+    log_action(db, admin, "export_submissions_zip", "submission", context={"count": len(submissions)})
+
+    return FileResponse(
+        tmp.name,
+        media_type="application/zip",
+        filename="adappt_submissions.zip",
+        background=BackgroundTask(os.unlink, tmp.name),
+    )
 
 
 @router.get("/submissions/{submission_id}")

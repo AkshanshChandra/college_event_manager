@@ -76,6 +76,14 @@ class StorageBackend(ABC):
         """Dev-only escape hatch used by the local backend's own direct-upload route."""
         ...
 
+    @abstractmethod
+    def open_read_stream(self, storage_key: str):
+        """A file-like object (supports .read(n) and .close()) for streaming
+        the object's bytes server-side — e.g. into a zip archive — without
+        buffering the whole file in memory.
+        """
+        ...
+
 
 def _build_key(team_id: int, file_type: str, filename: str) -> str:
     safe_name = Path(filename).name
@@ -134,6 +142,9 @@ class LocalDiskStorage(StorageBackend):
     def resolve_path(self, storage_key: str) -> Path:
         return self.base_dir / storage_key
 
+    def open_read_stream(self, storage_key: str):
+        return open(self.resolve_path(storage_key), "rb")
+
 
 class S3Storage(StorageBackend):
     def __init__(self, bucket: str, region: str) -> None:
@@ -169,6 +180,9 @@ class S3Storage(StorageBackend):
 
     def save_local_upload(self, storage_key: str, source_path: str) -> None:
         raise NotImplementedError("S3Storage expects direct browser-to-S3 uploads.")
+
+    def open_read_stream(self, storage_key: str):
+        return self.client.get_object(Bucket=self.bucket, Key=storage_key)["Body"]
 
 
 _storage_instance: StorageBackend | None = None

@@ -225,3 +225,34 @@ def test_admin_can_view_all_teams_and_submissions(
     # The admin-issued presigned URL works with no Authorization header at all.
     resp = client.get(download_url)
     assert resp.status_code == 200
+
+
+def test_admin_can_export_all_submissions_as_zip(
+    client, admin_user, domains, registrations_synced, round_settings, monkeypatch
+):
+    import io
+    import zipfile
+
+    token_a = activate_participant(client, monkeypatch, "leader.a@example.com", "LeaderPass123!")
+    doc_key = _presign_and_upload(client, token_a, "document", "a.pdf", "application/pdf", b"%PDF-1.4 a")
+    vid_key = _presign_and_upload(client, token_a, "video", "a.mp4", "video/mp4", b"a-video-bytes")
+    _submit_round1(client, token_a, doc_key, vid_key)
+
+    admin_token = login(client, "admin@test.dev", "AdminPass123!")
+    resp = client.get("/api/admin/submissions/export-zip", headers=auth_headers(admin_token))
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/zip"
+
+    zf = zipfile.ZipFile(io.BytesIO(resp.content))
+    names = sorted(zf.namelist())
+    assert names == ["Healthcare/Team A/demo.mp4", "Healthcare/Team A/round1.pdf"]
+    assert zf.read("Healthcare/Team A/round1.pdf") == b"%PDF-1.4 a"
+    assert zf.read("Healthcare/Team A/demo.mp4") == b"a-video-bytes"
+
+
+def test_export_zip_returns_404_when_nothing_submitted(client, admin_user, domains):
+    from tests.conftest import login
+
+    admin_token = login(client, "admin@test.dev", "AdminPass123!")
+    resp = client.get("/api/admin/submissions/export-zip", headers=auth_headers(admin_token))
+    assert resp.status_code == 404
