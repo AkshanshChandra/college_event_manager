@@ -143,6 +143,33 @@ def test_file_validation_rejects_oversized_file(client, domains, registrations_s
     assert "exceeds" in resp.json()["detail"].lower()
 
 
+def test_submission_requires_both_document_and_video(
+    client, domains, registrations_synced, round_settings, monkeypatch
+):
+    token = activate_participant(client, monkeypatch, "leader.a@example.com", "LeaderPass123!")
+    doc_key = _presign_and_upload(client, token, "document", "round1.pdf", "application/pdf", b"%PDF-1.4 x")
+    vid_key = _presign_and_upload(client, token, "video", "demo.mp4", "video/mp4", b"fake-mp4-bytes")
+
+    file_meta = {
+        "storage_key": doc_key,
+        "original_filename": "round1.pdf",
+        "content_type": "application/pdf",
+        "file_size_bytes": 10,
+    }
+    video_meta = {
+        "storage_key": vid_key,
+        "original_filename": "demo.mp4",
+        "content_type": "video/mp4",
+        "file_size_bytes": 10,
+    }
+
+    resp = client.post("/api/submissions", headers=auth_headers(token), json={"document": file_meta})
+    assert resp.status_code == 422
+
+    resp = client.post("/api/submissions", headers=auth_headers(token), json={"video": video_meta})
+    assert resp.status_code == 422
+
+
 def test_team_a_cannot_access_team_bs_files(client, domains, registrations_synced, round_settings, monkeypatch):
     token_a = activate_participant(client, monkeypatch, "leader.a@example.com", "LeaderPass123!")
     token_b = activate_participant(client, monkeypatch, "leader.b@example.com", "LeaderPass123!")
