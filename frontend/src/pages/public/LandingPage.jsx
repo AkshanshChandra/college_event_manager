@@ -51,7 +51,7 @@ const DOMAIN_ICONS = {
 }
 
 const EVENT_DETAILS = [
-  { icon: CalendarDays, label: 'Dates', value: 'Round 1 upto 17 Oct · Round 2: 23–24 Oct 2026' },
+  { icon: CalendarDays, label: 'Dates', value: 'Round 1 upto 19 Oct · Round 2: 23–24 Oct 2026' },
   { icon: MapPin, label: 'Venue', value: 'MPSTME, Mumbai' },
   { icon: Users, label: 'Team Size', value: '4 members per team' },
   { icon: Trophy, label: 'Expected Participants', value: '500+ students, colleges across India' },
@@ -205,7 +205,7 @@ export function LandingPage() {
                   idea, its approach, and the proposed solution.
                 </p>
                 <div className="mt-1 flex flex-wrap gap-2 text-xs text-ink-500">
-                  <Badge variant="neutral">Deadline: 17 Oct, 12:00 AM</Badge>
+                  <Badge variant="neutral">Deadline: 19 Oct, 5:00 PM</Badge>
                   <Badge variant="neutral">Results: 19 Oct, 12:00 AM</Badge>
                 </div>
               </CardBody>
