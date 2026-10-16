@@ -153,6 +153,56 @@ def send_activation_email(to: str, team_name: str, activation_url: str) -> None:
     get_email_backend().send(to, subject, html_body, text_body)
 
 
+_ORGANIZER_CONTACTS = [
+    ("Akshansh Chandra", "+918586876378"),
+    ("Arushi Dube", "+919137086087"),
+    ("Arnab Mukhopadhyay", "+918104530548"),
+]
+
+
+def send_round1_reminder_email(to: str, leader_name: str, team_name: str, deadline_text: str) -> None:
+    subject = f"ADAPPT 5.0 — Round 1 Submission Deadline: {deadline_text}"
+    contacts_text = "\n".join(f"- {name} — {phone}" for name, phone in _ORGANIZER_CONTACTS)
+    contacts_html = "".join(
+        f'<li style="margin-bottom:4px;">{name} — {phone}</li>' for name, phone in _ORGANIZER_CONTACTS
+    )
+    text_body = (
+        f"Hi {leader_name},\n\n"
+        f"This is a reminder that Round 1 submissions for ADAPPT 5.0 are due on {deadline_text}. "
+        f"Our records show Team \"{team_name}\" hasn't submitted yet.\n\n"
+        f"Please upload your Round 1 submission (PPT/PDF and demo video — both are required) "
+        f"through the participant portal before the deadline:\n"
+        f"https://adappt.ietempstme.com/submission\n\n"
+        f"Submissions will not be accepted after the deadline, so please don't wait until the last minute.\n\n"
+        f"If you run into any issues or have questions, reach out to:\n{contacts_text}\n\n"
+        f"If you've already submitted and are seeing this by mistake, you can safely ignore this email.\n\n"
+        f"— ADAPPT Organizing Committee" + _FOOTER_TEXT
+    )
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 480px; color:#111827;">
+      {_logo_header_html()}
+      <h2>Round 1 Submission Deadline: {deadline_text}</h2>
+      <p>Hi {leader_name},</p>
+      <p>This is a reminder that Round 1 submissions for ADAPPT 5.0 are due on
+        <strong>{deadline_text}</strong>. Our records show Team <strong>{team_name}</strong>
+        hasn't submitted yet.</p>
+      <p>Please upload your Round 1 submission (PPT/PDF <strong>and</strong> demo video — both
+        are required) through the participant portal before the deadline:</p>
+      <p><a href="https://adappt.ietempstme.com/submission" style="background:#c92c37;color:#fff;
+        padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
+        Submit Round 1</a></p>
+      <p style="color:#6b7280;font-size:13px;">Submissions will not be accepted after the
+        deadline, so please don't wait until the last minute.</p>
+      <p>If you run into any issues or have questions, reach out to:</p>
+      <ul style="padding-left:18px;color:#111827;">{contacts_html}</ul>
+      <p style="color:#6b7280;font-size:13px;">If you've already submitted and are seeing this
+        by mistake, you can safely ignore this email.</p>
+      {_FOOTER_HTML}
+    </div>
+    """
+    get_email_backend().send(to, subject, html_body, text_body)
+
+
 def send_submission_confirmation_email(to: str, team_name: str, submitted_at: str) -> None:
     subject = "ADAPPT Round 1 submission received"
     text_body = (
