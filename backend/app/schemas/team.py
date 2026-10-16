@@ -25,3 +25,16 @@ class TeamOut(BaseModel):
     registered_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TeamMergeRequest(BaseModel):
+    primary_team_id: int
+    secondary_team_id: int
+
+
+class TeamMergeResultOut(BaseModel):
+    primary_team_id: int
+    secondary_team_name: str
+    members_moved: int
+    submissions_discarded: int
+    secondary_leader_disabled: bool

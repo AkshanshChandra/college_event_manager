@@ -19,7 +19,7 @@ from app.schemas.admin import (
     SheetSyncResultOut,
 )
 from app.schemas.submission import SubmissionOut
-from app.schemas.team import TeamMemberOut, TeamOut
+from app.schemas.team import TeamMemberOut, TeamMergeRequest, TeamMergeResultOut, TeamOut
 from app.services.accounts import request_portal_access
 from app.services.audit import log_action
 from app.services.registration_sync import (
@@ -332,6 +332,67 @@ def list_teams(
             )
         )
     return out
+
+
+@router.post("/teams/merge", response_model=TeamMergeResultOut)
+def merge_teams(
+    payload: TeamMergeRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> TeamMergeResultOut:
+    """Folds a duplicate team registration into another.
+
+    Members move onto the primary team; the secondary team's submissions
+    are discarded entirely (not combined) and its leader's portal login is
+    disabled, but its Registration row is kept for audit history. This is
+    for cleaning up accidental duplicate registrations of the same team,
+    not for merging two genuinely different teams.
+    """
+    if payload.primary_team_id == payload.secondary_team_id:
+        raise HTTPException(status_code=400, detail="Choose two different teams to merge.")
+
+    primary = db.get(Team, payload.primary_team_id)
+    secondary = db.get(Team, payload.secondary_team_id)
+    if primary is None or secondary is None:
+        raise HTTPException(status_code=404, detail="Team not found.")
+
+    secondary_name = secondary.name
+    members_moved = len(secondary.members)
+    submissions_discarded = len(secondary.submissions)
+
+    # Reassigning via the relationship (not member.team_id directly) keeps
+    # the in-memory `secondary.members` collection in sync, so the
+    # delete-orphan cascade below doesn't try to delete the members we just
+    # moved onto the primary team.
+    for member in list(secondary.members):
+        member.team = primary
+
+    secondary_leader = secondary.leader
+    secondary_leader_disabled = secondary_leader is not None
+    if secondary_leader is not None:
+        secondary_leader.status = AccountStatus.DISABLED
+        secondary_leader.team_id = None
+
+    db.delete(secondary)
+    db.commit()
+
+    log_action(
+        db, admin, "merge_teams", "team", primary.id,
+        {
+            "merged_team_id": payload.secondary_team_id,
+            "merged_team_name": secondary_name,
+            "members_moved": members_moved,
+            "submissions_discarded": submissions_discarded,
+        },
+    )
+
+    return TeamMergeResultOut(
+        primary_team_id=primary.id,
+        secondary_team_name=secondary_name,
+        members_moved=members_moved,
+        submissions_discarded=submissions_discarded,
+        secondary_leader_disabled=secondary_leader_disabled,
+    )
 
 
 @router.get("/teams/{team_id}")

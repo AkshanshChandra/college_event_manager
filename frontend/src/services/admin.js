@@ -17,6 +17,8 @@ export const adminApi = {
 
   listTeams: (params) => api.get('/admin/teams', { params }),
   getTeamDetail: (teamId) => api.get(`/admin/teams/${teamId}`),
+  mergeTeams: (primaryTeamId, secondaryTeamId) =>
+    api.post('/admin/teams/merge', { primary_team_id: primaryTeamId, secondary_team_id: secondaryTeamId }),
 
   listDomains: () => api.get('/admin/domains'),
   createDomain: (payload) => api.post('/admin/domains', payload),
