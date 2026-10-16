@@ -22,6 +22,7 @@ import { TeamPage } from './pages/participant/TeamPage'
 
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminRegistrationsPage } from './pages/admin/AdminRegistrationsPage'
+import { AdminMergeRegistrationsPage } from './pages/admin/AdminMergeRegistrationsPage'
 import { AdminTeamsPage } from './pages/admin/AdminTeamsPage'
 import { AdminTeamDetailPage } from './pages/admin/AdminTeamDetailPage'
 import { AdminDomainsPage } from './pages/admin/AdminDomainsPage'
@@ -63,6 +64,7 @@ export default function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                 <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
+                <Route path="/admin/merge-registrations" element={<AdminMergeRegistrationsPage />} />
                 <Route path="/admin/teams" element={<AdminTeamsPage />} />
                 <Route path="/admin/teams/:teamId" element={<AdminTeamDetailPage />} />
                 <Route path="/admin/domains" element={<AdminDomainsPage />} />

@@ -15,11 +15,13 @@ from app.models.enums import AccountStatus, DomainStatus, PaymentMethod, Payment
 from app.schemas.admin import (
     PaymentStatusUpdate,
     RegistrationListItemOut,
+    RegistrationMergeRequest,
+    RegistrationMergeResultOut,
     RegistrationUpdateRequest,
     SheetSyncResultOut,
 )
 from app.schemas.submission import SubmissionOut
-from app.schemas.team import TeamMemberOut, TeamMergeRequest, TeamMergeResultOut, TeamOut
+from app.schemas.team import TeamMemberOut, TeamOut
 from app.services.accounts import request_portal_access
 from app.services.audit import log_action
 from app.services.registration_sync import (
@@ -232,6 +234,106 @@ def update_registration_details(
     return _registration_to_out(db, registration)
 
 
+@router.post("/registrations/merge", response_model=RegistrationMergeResultOut)
+def merge_registrations(
+    payload: RegistrationMergeRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> RegistrationMergeResultOut:
+    """Folds a duplicate registration into another — works regardless of
+    payment/activation status, so cleaning up a team that accidentally
+    registered twice never requires verifying payment or sending an
+    activation email just to be able to merge them.
+
+    The secondary registration's leader becomes an ordinary member on the
+    primary registration, along with its extra members. If either side
+    already has an activated portal account, that's kept in sync too: new
+    TeamMember rows on the primary's team, and the secondary's submissions
+    discarded + its leader's login disabled (its Team is deleted, but the
+    Registration row itself is removed by this merge, not kept around).
+    """
+    if payload.primary_registration_id == payload.secondary_registration_id:
+        raise HTTPException(status_code=400, detail="Choose two different registrations to merge.")
+
+    primary = db.get(Registration, payload.primary_registration_id)
+    secondary = db.get(Registration, payload.secondary_registration_id)
+    if primary is None or secondary is None:
+        raise HTTPException(status_code=404, detail="Registration not found.")
+
+    new_entries = [{"name": secondary.leader_name, "phone": secondary.leader_phone}]
+    for m in secondary.members_raw:
+        name, phone = member_name_and_phone(m)
+        new_entries.append({"name": name, "phone": phone})
+
+    new_team_size = 1 + len(primary.members_raw) + len(new_entries)
+    if new_team_size > MAX_TEAM_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Merging would make a team of {new_team_size}, above the max of {MAX_TEAM_SIZE}. "
+                "Trim members on one side first (via Edit), then merge."
+            ),
+        )
+
+    primary.members_raw = [*primary.members_raw, *new_entries]
+    primary.team_size = new_team_size
+    primary.payment_amount_inr = new_team_size * settings.PAYMENT_PER_PERSON_INR
+
+    # If the primary already has an activated portal account, its TeamMember
+    # rows are a separate copy of the roster (not derived live from
+    # members_raw) — keep them in sync with the new entries we just folded in.
+    if primary.team is not None:
+        for e in new_entries:
+            primary.team.members.append(TeamMember(name=e["name"], phone=e["phone"]))
+
+    submissions_discarded = 0
+    secondary_leader_disabled = False
+    if secondary.team is not None:
+        submissions_discarded = len(secondary.team.submissions)
+        secondary_leader = secondary.team.leader
+        if secondary_leader is not None:
+            secondary_leader.status = AccountStatus.DISABLED
+            secondary_leader.team_id = None
+            secondary_leader_disabled = True
+        db.delete(secondary.team)
+
+    secondary_team_name = secondary.team_name
+    secondary_snapshot = {
+        "team_name": secondary.team_name,
+        "leader_name": secondary.leader_name,
+        "leader_email": secondary.leader_email,
+        "college": secondary.college,
+        "domain_slug": secondary.domain_slug,
+        "payment_status": secondary.payment_status.value,
+    }
+
+    db.delete(secondary)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Could not merge — a conflicting registration exists.")
+
+    log_action(
+        db, admin, "merge_registrations", "registration", primary.id,
+        {
+            "merged_registration": secondary_snapshot,
+            "members_moved": len(new_entries),
+            "submissions_discarded": submissions_discarded,
+            "new_team_size": new_team_size,
+        },
+    )
+    sync_registrations_to_sheet_safe(db)
+
+    return RegistrationMergeResultOut(
+        primary_registration_id=primary.id,
+        secondary_team_name=secondary_team_name,
+        members_moved=len(new_entries),
+        submissions_discarded=submissions_discarded,
+        secondary_leader_disabled=secondary_leader_disabled,
+    )
+
+
 @router.post("/registrations/{registration_id}/resend-email", status_code=204)
 def resend_registration_email(
     registration_id: int,
@@ -332,67 +434,6 @@ def list_teams(
             )
         )
     return out
-
-
-@router.post("/teams/merge", response_model=TeamMergeResultOut)
-def merge_teams(
-    payload: TeamMergeRequest,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-) -> TeamMergeResultOut:
-    """Folds a duplicate team registration into another.
-
-    Members move onto the primary team; the secondary team's submissions
-    are discarded entirely (not combined) and its leader's portal login is
-    disabled, but its Registration row is kept for audit history. This is
-    for cleaning up accidental duplicate registrations of the same team,
-    not for merging two genuinely different teams.
-    """
-    if payload.primary_team_id == payload.secondary_team_id:
-        raise HTTPException(status_code=400, detail="Choose two different teams to merge.")
-
-    primary = db.get(Team, payload.primary_team_id)
-    secondary = db.get(Team, payload.secondary_team_id)
-    if primary is None or secondary is None:
-        raise HTTPException(status_code=404, detail="Team not found.")
-
-    secondary_name = secondary.name
-    members_moved = len(secondary.members)
-    submissions_discarded = len(secondary.submissions)
-
-    # Reassigning via the relationship (not member.team_id directly) keeps
-    # the in-memory `secondary.members` collection in sync, so the
-    # delete-orphan cascade below doesn't try to delete the members we just
-    # moved onto the primary team.
-    for member in list(secondary.members):
-        member.team = primary
-
-    secondary_leader = secondary.leader
-    secondary_leader_disabled = secondary_leader is not None
-    if secondary_leader is not None:
-        secondary_leader.status = AccountStatus.DISABLED
-        secondary_leader.team_id = None
-
-    db.delete(secondary)
-    db.commit()
-
-    log_action(
-        db, admin, "merge_teams", "team", primary.id,
-        {
-            "merged_team_id": payload.secondary_team_id,
-            "merged_team_name": secondary_name,
-            "members_moved": members_moved,
-            "submissions_discarded": submissions_discarded,
-        },
-    )
-
-    return TeamMergeResultOut(
-        primary_team_id=primary.id,
-        secondary_team_name=secondary_name,
-        members_moved=members_moved,
-        submissions_discarded=submissions_discarded,
-        secondary_leader_disabled=secondary_leader_disabled,
-    )
 
 
 @router.get("/teams/{team_id}")

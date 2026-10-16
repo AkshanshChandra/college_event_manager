@@ -82,6 +82,19 @@ class RegistrationUpdateRequest(BaseModel):
         return members
 
 
+class RegistrationMergeRequest(BaseModel):
+    primary_registration_id: int
+    secondary_registration_id: int
+
+
+class RegistrationMergeResultOut(BaseModel):
+    primary_registration_id: int
+    secondary_team_name: str
+    members_moved: int
+    submissions_discarded: int
+    secondary_leader_disabled: bool
+
+
 class SyncResultOut(BaseModel):
     created: int
     updated: int

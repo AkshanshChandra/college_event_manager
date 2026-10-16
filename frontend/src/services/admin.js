@@ -14,11 +14,14 @@ export const adminApi = {
     api.put(`/admin/registrations/${id}/payment-status`, { payment_status: paymentStatus }),
   updateRegistration: (id, payload) => api.put(`/admin/registrations/${id}`, payload),
   resendRegistrationEmail: (id) => api.post(`/admin/registrations/${id}/resend-email`),
+  mergeRegistrations: (primaryRegistrationId, secondaryRegistrationId) =>
+    api.post('/admin/registrations/merge', {
+      primary_registration_id: primaryRegistrationId,
+      secondary_registration_id: secondaryRegistrationId,
+    }),
 
   listTeams: (params) => api.get('/admin/teams', { params }),
   getTeamDetail: (teamId) => api.get(`/admin/teams/${teamId}`),
-  mergeTeams: (primaryTeamId, secondaryTeamId) =>
-    api.post('/admin/teams/merge', { primary_team_id: primaryTeamId, secondary_team_id: secondaryTeamId }),
 
   listDomains: () => api.get('/admin/domains'),
   createDomain: (payload) => api.post('/admin/domains', payload),

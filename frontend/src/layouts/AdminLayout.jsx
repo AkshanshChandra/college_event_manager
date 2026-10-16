@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Users,
+  Merge,
   Layers,
   FileText,
   Newspaper,
@@ -20,6 +21,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV_ITEMS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/registrations', label: 'Registrations', icon: ClipboardList },
+  { to: '/admin/merge-registrations', label: 'Merge Registrations', icon: Merge },
   { to: '/admin/teams', label: 'Teams', icon: Users },
   { to: '/admin/domains', label: 'Domains', icon: Layers },
   { to: '/admin/problem-statements', label: 'Problem Statements', icon: FileText },
