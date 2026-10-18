@@ -101,7 +101,7 @@ export function SubmissionPage() {
   const statusMeta = SUBMISSION_STATUS_META[state.participant_status]
   const canUpload =
     state.window_status === 'open' && (!state.active_submission || state.allow_replacement)
-  const readyToSubmit = doc.status === 'done' && video.status === 'done'
+  const readyToSubmit = video.status === 'done' && (doc.status === 'idle' || doc.status === 'done')
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -134,11 +134,11 @@ export function SubmissionPage() {
         <Card className="mt-6">
           <CardHeader
             title="Upload Files"
-            description="Both a document and a demo video are required."
+            description="A demo video is required. The PPT/PDF document is optional."
           />
           <CardBody className="grid gap-6 sm:grid-cols-2">
             <FileDropzone
-              label="PPT / PDF"
+              label="PPT / PDF (optional)"
               hint={`Allowed: ${state.allowed_document_extensions.join(', ')} · Max ${state.max_document_size_mb}MB`}
               accept={state.allowed_document_extensions.map((e) => `.${e}`).join(',')}
               file={doc.file}
@@ -149,7 +149,7 @@ export function SubmissionPage() {
               onRetry={() => doc.file && uploadFile(doc.file, 'document', setDoc)}
             />
             <FileDropzone
-              label="Demo Video"
+              label="Demo Video (required)"
               hint={`Allowed: ${state.allowed_video_extensions.join(', ')} · Max ${state.max_video_size_mb}MB`}
               accept={state.allowed_video_extensions.map((e) => `.${e}`).join(',')}
               file={video.file}
@@ -206,8 +206,12 @@ export function SubmissionPage() {
           <span>
             <strong>Team:</strong> {team?.name} · <strong>Domain:</strong> {team?.domain?.name}
             <br />
-            <strong>Document:</strong> {doc.meta?.original_filename}
-            <br />
+            {doc.meta && (
+              <>
+                <strong>Document:</strong> {doc.meta.original_filename}
+                <br />
+              </>
+            )}
             <strong>Video:</strong> {video.meta?.original_filename}
             <br />
             <br />

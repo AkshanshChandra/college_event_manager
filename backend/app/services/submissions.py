@@ -91,7 +91,7 @@ def assert_window_open_for_upload(team: Team, round_settings: CompetitionSetting
 
 
 def create_new_submission_version(
-    db: Session, team: Team, document: FileMeta, video: FileMeta
+    db: Session, team: Team, document: FileMeta | None, video: FileMeta
 ) -> Submission:
     now = datetime.now(timezone.utc)
     for existing in team.submissions:
@@ -108,14 +108,6 @@ def create_new_submission_version(
     )
     submission.files = [
         SubmissionFile(
-            file_type=SubmissionFileType.DOCUMENT,
-            original_filename=document.original_filename,
-            storage_key=document.storage_key,
-            content_type=document.content_type,
-            file_size_bytes=document.file_size_bytes,
-            uploaded_at=now,
-        ),
-        SubmissionFile(
             file_type=SubmissionFileType.VIDEO,
             original_filename=video.original_filename,
             storage_key=video.storage_key,
@@ -124,6 +116,17 @@ def create_new_submission_version(
             uploaded_at=now,
         ),
     ]
+    if document is not None:
+        submission.files.append(
+            SubmissionFile(
+                file_type=SubmissionFileType.DOCUMENT,
+                original_filename=document.original_filename,
+                storage_key=document.storage_key,
+                content_type=document.content_type,
+                file_size_bytes=document.file_size_bytes,
+                uploaded_at=now,
+            )
+        )
     db.add(submission)
     db.commit()
     db.refresh(submission)

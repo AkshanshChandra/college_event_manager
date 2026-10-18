@@ -143,7 +143,7 @@ def test_file_validation_rejects_oversized_file(client, domains, registrations_s
     assert "exceeds" in resp.json()["detail"].lower()
 
 
-def test_submission_requires_both_document_and_video(
+def test_submission_requires_video_but_not_document(
     client, domains, registrations_synced, round_settings, monkeypatch
 ):
     token = activate_participant(client, monkeypatch, "leader.a@example.com", "LeaderPass123!")
@@ -163,11 +163,16 @@ def test_submission_requires_both_document_and_video(
         "file_size_bytes": 10,
     }
 
+    # Document alone, no video: still rejected — video is the one compulsory file.
     resp = client.post("/api/submissions", headers=auth_headers(token), json={"document": file_meta})
     assert resp.status_code == 422
 
+    # Video alone, no document: now allowed — the document (PPT/PDF) is optional.
     resp = client.post("/api/submissions", headers=auth_headers(token), json={"video": video_meta})
-    assert resp.status_code == 422
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert len(body["files"]) == 1
+    assert body["files"][0]["file_type"] == "video"
 
 
 def test_team_a_cannot_access_team_bs_files(client, domains, registrations_synced, round_settings, monkeypatch):

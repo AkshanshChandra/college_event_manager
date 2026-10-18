@@ -141,15 +141,17 @@ def submit_round1(
     team = current_user.team
     assert_window_open_for_upload(team, round_settings)
 
-    _assert_owns_storage_key(current_user, payload.document.storage_key)
+    if payload.document is not None:
+        _assert_owns_storage_key(current_user, payload.document.storage_key)
     _assert_owns_storage_key(current_user, payload.video.storage_key)
 
-    validate_file_or_raise(
-        SubmissionFileType.DOCUMENT,
-        payload.document.original_filename,
-        payload.document.file_size_bytes,
-        round_settings,
-    )
+    if payload.document is not None:
+        validate_file_or_raise(
+            SubmissionFileType.DOCUMENT,
+            payload.document.original_filename,
+            payload.document.file_size_bytes,
+            round_settings,
+        )
     validate_file_or_raise(
         SubmissionFileType.VIDEO,
         payload.video.original_filename,
@@ -165,7 +167,8 @@ def submit_round1(
             file_size_bytes=f.file_size_bytes,
         )
 
-    submission = create_new_submission_version(db, team, to_meta(payload.document), to_meta(payload.video))
+    document_meta = to_meta(payload.document) if payload.document is not None else None
+    submission = create_new_submission_version(db, team, document_meta, to_meta(payload.video))
     send_submission_confirmation_email(
         current_user.team.registration.leader_email,
         team.name,

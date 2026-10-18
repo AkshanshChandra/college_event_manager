@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: 'What do I submit for Round 1?',
-    a: 'Your pitch materials — a PPT/PDF and a video — uploaded through the participant portal before the submission deadline shown on your dashboard.',
+    a: 'A pitch video is required. A supporting PPT/PDF is optional. Upload through the participant portal before the submission deadline shown on your dashboard.',
   },
   {
     q: 'What happens after Round 1?',

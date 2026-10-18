@@ -24,7 +24,7 @@ class FileMetaIn(BaseModel):
 
 
 class SubmitRequest(BaseModel):
-    document: FileMetaIn
+    document: FileMetaIn | None = None
     video: FileMetaIn
 
 
