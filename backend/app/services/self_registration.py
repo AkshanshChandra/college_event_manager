@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Domain, Registration
+from app.models import Domain, Registration, RegistrationSettings
 from app.models.enums import DomainStatus, PaymentMethod, PaymentStatus, RegistrationSource
 from app.schemas.registration_form import RegistrationFormRequest
 from app.services.registration_sync import sync_registrations_to_sheet_safe
@@ -13,6 +13,16 @@ from app.services.registration_sync import sync_registrations_to_sheet_safe
 settings = get_settings()
 
 PENDING_PAYMENT_KEY_PREFIX = "registrations/pending-payment/"
+
+
+def get_or_create_registration_settings(db: Session) -> RegistrationSettings:
+    row = db.query(RegistrationSettings).first()
+    if row is None:
+        row = RegistrationSettings(is_open=True)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row
 
 
 def is_team_name_available(db: Session, team_name: str) -> bool:
@@ -32,6 +42,9 @@ def create_self_registration(db: Session, payload: RegistrationFormRequest) -> R
     never a row sitting around for someone who filled the form but abandoned
     it before that confirmation.
     """
+    if not get_or_create_registration_settings(db).is_open:
+        raise HTTPException(status_code=403, detail="Registration is closed.")
+
     domain = (
         db.query(Domain)
         .filter(Domain.slug == payload.domain_slug, Domain.status == DomainStatus.ACTIVE)

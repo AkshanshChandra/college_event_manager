@@ -47,5 +47,8 @@ export const adminApi = {
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (payload) => api.put('/admin/settings', payload),
 
+  getRegistrationSettings: () => api.get('/admin/registration-settings'),
+  updateRegistrationSettings: (isOpen) => api.put('/admin/registration-settings', { is_open: isOpen }),
+
   listAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
 }

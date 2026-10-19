@@ -4,11 +4,36 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import require_admin
 from app.database import get_db
 from app.models import CompetitionSettings, User
-from app.schemas.admin import CompetitionSettingsOut, CompetitionSettingsUpdate
+from app.schemas.admin import (
+    CompetitionSettingsOut,
+    CompetitionSettingsUpdate,
+    RegistrationSettingsOut,
+    RegistrationSettingsUpdate,
+)
 from app.services.audit import log_action
+from app.services.self_registration import get_or_create_registration_settings
 from app.services.submissions import ROUND_1_KEY
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/registration-settings", response_model=RegistrationSettingsOut)
+def get_registration_settings_route(
+    db: Session = Depends(get_db), _: User = Depends(require_admin)
+) -> RegistrationSettingsOut:
+    return get_or_create_registration_settings(db)
+
+
+@router.put("/registration-settings", response_model=RegistrationSettingsOut)
+def update_registration_settings_route(
+    payload: RegistrationSettingsUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> RegistrationSettingsOut:
+    row = get_or_create_registration_settings(db)
+    row.is_open = payload.is_open
+    db.commit()
+    db.refresh(row)
+    log_action(db, admin, "update_registration_settings", "registration_settings", row.id, {"is_open": row.is_open})
+    return row
 
 
 @router.get("/settings", response_model=CompetitionSettingsOut)

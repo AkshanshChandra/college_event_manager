@@ -38,6 +38,7 @@ const emptyForm = {
 
 export function RegisterPage() {
   const [domains, setDomains] = useState(null)
+  const [registrationOpen, setRegistrationOpen] = useState(null)
   const [paymentPerPerson, setPaymentPerPerson] = useState(300)
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
@@ -47,7 +48,10 @@ export function RegisterPage() {
 
   useEffect(() => {
     publicApi.getDomains().then(({ data }) => setDomains(data))
-    publicApi.getTimeline().then(({ data }) => setPaymentPerPerson(data.payment_per_person_inr))
+    publicApi.getTimeline().then(({ data }) => {
+      setPaymentPerPerson(data.payment_per_person_inr)
+      setRegistrationOpen(data.registration_open)
+    })
   }, [])
 
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
@@ -109,7 +113,31 @@ export function RegisterPage() {
     setStep('review')
   }
 
-  if (domains === null) return <PageLoader />
+  if (domains === null || registrationOpen === null) return <PageLoader />
+
+  if (!registrationOpen) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper px-4">
+        <div className="mx-auto max-w-md text-center">
+          <div className="mb-8 flex justify-center">
+            <Brand />
+          </div>
+          <Card>
+            <CardBody className="p-8">
+              <h1 className="text-xl font-semibold text-ink-950">Registration Closed</h1>
+              <p className="mt-2 text-sm text-ink-500">
+                Registration for ADAPPT 5.0 is now closed and no longer accepting new teams. If you
+                believe this is a mistake, please reach out to the organizing committee.
+              </p>
+              <Link to="/" className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-accent-700 hover:underline">
+                <ArrowLeft size={14} /> Back to home
+              </Link>
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   if (step === 'review') {
     return (

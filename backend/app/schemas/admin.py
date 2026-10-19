@@ -95,6 +95,16 @@ class RegistrationMergeResultOut(BaseModel):
     secondary_leader_disabled: bool
 
 
+class RegistrationSettingsOut(BaseModel):
+    is_open: bool
+
+    model_config = {"from_attributes": True}
+
+
+class RegistrationSettingsUpdate(BaseModel):
+    is_open: bool
+
+
 class SyncResultOut(BaseModel):
     created: int
     updated: int

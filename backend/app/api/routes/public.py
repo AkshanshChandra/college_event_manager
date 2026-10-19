@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import CompetitionSettings, Domain
 from app.models.enums import DomainStatus
 from app.schemas.domain import DomainOut
+from app.services.self_registration import get_or_create_registration_settings
 from app.services.submissions import ROUND_1_KEY, window_status
 
 router = APIRouter(tags=["public"])
@@ -30,4 +31,5 @@ def public_timeline(db: Session = Depends(get_db)) -> dict:
         "submission_start": round_settings.submission_start if round_settings else None,
         "submission_end": round_settings.submission_end if round_settings else None,
         "submission_window_status": window_status(round_settings) if round_settings else "not_open",
+        "registration_open": get_or_create_registration_settings(db).is_open,
     }

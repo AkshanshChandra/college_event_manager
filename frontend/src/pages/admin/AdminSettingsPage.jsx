@@ -4,6 +4,7 @@ import { Card, CardBody, CardHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Field, Input } from '../../components/ui/Field'
 import { PageLoader } from '../../components/ui/States'
+import { Badge } from '../../components/ui/Badge'
 import { adminApi } from '../../services/admin'
 import { getErrorMessage } from '../../services/api'
 import { useToast } from '../../hooks/useToast'
@@ -19,6 +20,8 @@ export function AdminSettingsPage() {
   const [settings, setSettings] = useState(null)
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [registrationOpen, setRegistrationOpen] = useState(null)
+  const [savingRegistration, setSavingRegistration] = useState(false)
 
   useEffect(() => {
     adminApi.getSettings().then(({ data }) => {
@@ -29,9 +32,23 @@ export function AdminSettingsPage() {
         submission_end: toLocalInputValue(data.submission_end),
       })
     })
+    adminApi.getRegistrationSettings().then(({ data }) => setRegistrationOpen(data.is_open))
   }, [])
 
-  if (!settings || !form) return <PageLoader />
+  const handleToggleRegistration = async (nextOpen) => {
+    setSavingRegistration(true)
+    try {
+      const { data } = await adminApi.updateRegistrationSettings(nextOpen)
+      setRegistrationOpen(data.is_open)
+      notify(data.is_open ? 'Registration is now open.' : 'Registration is now closed.', 'success')
+    } catch (err) {
+      notify(getErrorMessage(err, 'Could not update registration status.'), 'error')
+    } finally {
+      setSavingRegistration(false)
+    }
+  }
+
+  if (!settings || !form || registrationOpen === null) return <PageLoader />
 
   const handleSave = async () => {
     setSaving(true)
@@ -58,6 +75,25 @@ export function AdminSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="Competition Settings" description="Configure Round 1 submission rules." />
+
+      <Card className="mb-4">
+        <CardHeader
+          title="Registration"
+          description="Whether the public registration form accepts new team sign-ups."
+          action={<Badge variant={registrationOpen ? 'success' : 'danger'}>{registrationOpen ? 'Open' : 'Closed'}</Badge>}
+        />
+        <div className="flex justify-end gap-2 border-t border-ink-100 px-5 py-4">
+          {registrationOpen ? (
+            <Button variant="danger" loading={savingRegistration} onClick={() => handleToggleRegistration(false)}>
+              Close Registration
+            </Button>
+          ) : (
+            <Button variant="accent" loading={savingRegistration} onClick={() => handleToggleRegistration(true)}>
+              Reopen Registration
+            </Button>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <CardHeader title={form.round_label} />
