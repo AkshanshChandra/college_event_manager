@@ -253,6 +253,56 @@ def send_round1_reminder_email(to: str, leader_name: str, team_name: str, deadli
     get_email_backend().send(to, subject, html_body, text_body)
 
 
+def send_round1_final_notice_email(to: str, team_name: str) -> None:
+    subject = "⚠️ FINAL NOTICE — Round 1 Submission Closes TODAY at 5:00 PM"
+    contacts_text = "\n".join(f"- {name} — {phone}" for name, phone in _ORGANIZER_CONTACTS)
+    contacts_html = "".join(
+        f'<li style="margin-bottom:4px;">{name} — {phone}</li>' for name, phone in _ORGANIZER_CONTACTS
+    )
+    text_body = (
+        f"Team {team_name},\n\n"
+        f"This is a final and non-negotiable notice. Round 1 submissions for ADAPPT 5.0 close "
+        f"today at 5:00 PM sharp. Our records show you have not yet submitted.\n\n"
+        f"No extensions will be granted under any circumstances. If your submission is not "
+        f"received by the deadline, your team will be disqualified from Round 1 and will not be "
+        f"considered for Round 2.\n\n"
+        f"Submit immediately through the participant portal:\n"
+        f"https://adappt.ietempstme.com/submission\n\n"
+        f"A demo video is required (PPT/PDF is optional). Submissions cannot be edited or "
+        f"replaced once made, so ensure everything is correct before confirming.\n\n"
+        f"This is your last reminder. Do not wait until the last minute — technical issues at "
+        f"the deadline will not be an excuse for late submission.\n\n"
+        f"For urgent issues only, contact:\n{contacts_text}\n\n"
+        f"— ADAPPT Organizing Committee" + _FOOTER_TEXT
+    )
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 480px; color:#111827;">
+      {_logo_header_html()}
+      <h2 style="color:#b3401f;">FINAL NOTICE — Submission Closes TODAY at 5:00 PM</h2>
+      <p>Team <strong>{team_name}</strong>,</p>
+      <p>This is a <strong>final and non-negotiable notice</strong>. Round 1 submissions for
+        ADAPPT 5.0 close <strong>today at 5:00 PM sharp</strong>. Our records show you have
+        <strong>not yet submitted</strong>.</p>
+      <p><strong>No extensions will be granted under any circumstances.</strong> If your
+        submission is not received by the deadline, your team will be
+        <strong>disqualified from Round 1</strong> and will not be considered for Round 2.</p>
+      <p><strong>Submit immediately</strong> through the participant portal:</p>
+      <p><a href="https://adappt.ietempstme.com/submission" style="background:#b3401f;color:#fff;
+        padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
+        Submit Round 1 Now</a></p>
+      <p style="color:#6b7280;font-size:13px;">A demo video is required (PPT/PDF is optional).
+        Submissions cannot be edited or replaced once made, so ensure everything is correct
+        before confirming.</p>
+      <p>This is your last reminder. Do not wait until the last minute — technical issues at the
+        deadline will not be an excuse for late submission.</p>
+      <p>For urgent issues only, contact:</p>
+      <ul style="padding-left:18px;color:#111827;">{contacts_html}</ul>
+      {_FOOTER_HTML}
+    </div>
+    """
+    get_email_backend().send(to, subject, html_body, text_body)
+
+
 def send_round2_selection_email(
     to: str,
     venue: str,
