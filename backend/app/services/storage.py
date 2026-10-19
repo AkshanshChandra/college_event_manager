@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import os
 import shutil
 import time
 import uuid
@@ -84,6 +85,18 @@ class StorageBackend(ABC):
         """
         ...
 
+    @abstractmethod
+    def upload_local_file(self, storage_key: str, source_path: str, content_type: str) -> None:
+        """Uploads a server-generated local file (e.g. a bulk ZIP export)
+        into storage under storage_key, then removes the local file. Lets a
+        large generated artifact be handed back to an admin as a presigned
+        download link instead of streamed through this process's own
+        response — the browser then downloads it natively (straight to
+        disk, with real progress and resumability) instead of buffering the
+        whole thing in page memory first.
+        """
+        ...
+
 
 def _build_key(team_id: int, file_type: str, filename: str) -> str:
     safe_name = Path(filename).name
@@ -145,6 +158,11 @@ class LocalDiskStorage(StorageBackend):
     def open_read_stream(self, storage_key: str):
         return open(self.resolve_path(storage_key), "rb")
 
+    def upload_local_file(self, storage_key: str, source_path: str, content_type: str) -> None:
+        dest = self.base_dir / storage_key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(source_path, dest)
+
 
 class S3Storage(StorageBackend):
     def __init__(self, bucket: str, region: str) -> None:
@@ -183,6 +201,12 @@ class S3Storage(StorageBackend):
 
     def open_read_stream(self, storage_key: str):
         return self.client.get_object(Bucket=self.bucket, Key=storage_key)["Body"]
+
+    def upload_local_file(self, storage_key: str, source_path: str, content_type: str) -> None:
+        self.client.upload_file(
+            source_path, self.bucket, storage_key, ExtraArgs={"ContentType": content_type}
+        )
+        os.remove(source_path)
 
 
 _storage_instance: StorageBackend | None = None

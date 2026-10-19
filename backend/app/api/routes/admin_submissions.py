@@ -6,14 +6,15 @@ import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from starlette.background import BackgroundTask
-from starlette.responses import FileResponse
 
 from app.auth.dependencies import require_admin
 from app.database import get_db
 from app.models import Submission, Team, User
+from app.schemas.submission import SubmissionsZipExportOut
 from app.services.audit import log_action
 from app.services.storage import get_storage
+
+_SUBMISSIONS_EXPORT_KEY = "exports/adappt_submissions.zip"
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -59,13 +60,23 @@ def list_submissions(
     return results
 
 
-@router.get("/submissions/export-zip")
+@router.get("/submissions/export-zip", response_model=SubmissionsZipExportOut)
 def export_submissions_zip(
     db: Session = Depends(get_db), admin: User = Depends(require_admin)
-) -> FileResponse:
-    """Streams every team's active Round 1 submission into one zip, organized
-    as <domain>/<team>/<file>, so organizers can grab everything in one go
-    instead of downloading each file individually.
+) -> SubmissionsZipExportOut:
+    """Builds every team's active Round 1 submission into one zip, organized
+    as <domain>/<team>/<file>, uploads it to storage, and hands back a
+    presigned download link.
+
+    This used to stream the zip straight back as the response body, which
+    the admin's browser had to buffer entirely in page memory (via
+    axios's blob responseType) before it could be saved — fine at a few
+    hundred MB, but once most teams had submitted (each with a video up to
+    300MB) the export grew into multiple GB and that buffering step made
+    the download look permanently stuck even though the server had already
+    finished. A presigned link lets the browser download it natively
+    instead — streamed straight to disk, with real progress and no
+    in-page memory buffering.
     """
     submissions = (
         db.query(Submission).filter(Submission.is_active_version.is_(True)).join(Team).all()
@@ -89,18 +100,16 @@ def export_submissions_zip(
                             shutil.copyfileobj(stream, dest, length=1024 * 1024)
                     finally:
                         stream.close()
+        storage.upload_local_file(_SUBMISSIONS_EXPORT_KEY, tmp.name, "application/zip")
     except Exception:
-        os.unlink(tmp.name)
+        if os.path.exists(tmp.name):
+            os.unlink(tmp.name)
         raise
 
     log_action(db, admin, "export_submissions_zip", "submission", context={"count": len(submissions)})
 
-    return FileResponse(
-        tmp.name,
-        media_type="application/zip",
-        filename="adappt_submissions.zip",
-        background=BackgroundTask(os.unlink, tmp.name),
-    )
+    download_url = storage.create_presigned_download(_SUBMISSIONS_EXPORT_KEY, "adappt_submissions.zip")
+    return SubmissionsZipExportOut(download_url=download_url)
 
 
 @router.get("/submissions/{submission_id}")

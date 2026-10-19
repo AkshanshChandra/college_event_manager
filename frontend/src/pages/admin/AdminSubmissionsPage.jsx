@@ -43,15 +43,14 @@ export function AdminSubmissionsPage() {
   const handleExportZip = async () => {
     setExporting(true)
     try {
-      const { data: blob } = await adminApi.exportSubmissionsZip()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = 'adappt_submissions.zip'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      // The backend builds the zip server-side and hands back a direct,
+      // presigned download link rather than the file itself — letting the
+      // browser download it natively (streamed to disk, real progress, no
+      // in-page memory buffering) instead of through an axios blob, which
+      // used to make large exports (now several GB, once most teams had
+      // submitted) look permanently stuck even after the server finished.
+      const { data } = await adminApi.exportSubmissionsZip()
+      window.location.href = data.download_url
     } catch (err) {
       notify(getErrorMessage(err, 'Could not export submissions.'), 'error')
     } finally {

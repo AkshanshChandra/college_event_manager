@@ -245,10 +245,16 @@ def test_admin_can_export_all_submissions_as_zip(
 
     admin_token = login(client, "admin@test.dev", "AdminPass123!")
     resp = client.get("/api/admin/submissions/export-zip", headers=auth_headers(admin_token))
-    assert resp.status_code == 200
-    assert resp.headers["content-type"] == "application/zip"
+    assert resp.status_code == 200, resp.text
+    download_url = resp.json()["download_url"]
 
-    zf = zipfile.ZipFile(io.BytesIO(resp.content))
+    # The presigned link works with no Authorization header at all, same as
+    # an individual submission file's download link.
+    download_resp = client.get(download_url)
+    assert download_resp.status_code == 200
+    assert download_resp.headers["content-type"] == "application/zip"
+
+    zf = zipfile.ZipFile(io.BytesIO(download_resp.content))
     names = sorted(zf.namelist())
     assert names == ["Healthcare/Team A/demo.mp4", "Healthcare/Team A/round1.pdf"]
     assert zf.read("Healthcare/Team A/round1.pdf") == b"%PDF-1.4 a"

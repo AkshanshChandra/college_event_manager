@@ -49,6 +49,10 @@ class SubmissionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SubmissionsZipExportOut(BaseModel):
+    download_url: str
+
+
 class TeamSubmissionStateOut(BaseModel):
     window_status: str
     participant_status: str
