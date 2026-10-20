@@ -328,10 +328,12 @@ def send_round2_selection_email(
         f"1. Consent Form (required): EVERY INDIVIDUAL TEAM MEMBER MUST FILL OUT THIS FORM "
         f"SEPARATELY — one submission per member, not one per team.\n{consent_form_url}\n\n"
         f"*** THIS FORM MUST BE SUBMITTED BY {consent_deadline_text}. SUBMISSIONS RECEIVED AFTER "
-        f"THIS TIME WILL NOT BE ACCEPTED. ***\n\n"
-        f"2. Undertaking Letter (attached): Since the event involves an overnight stay on campus, "
-        f"please print the attached undertaking letter, get it signed by both the student and a "
-        f"parent/guardian, and bring the signed physical copy with you.\n\n"
+        f"THIS TIME WILL NOT BE ACCEPTED, AND TEAMS WHOSE FORMS ARE NOT RECEIVED ON TIME WILL BE "
+        f"DISQUALIFIED. ***\n\n"
+        f"2. Undertaking Letter (attached): Print the attached undertaking letter and get it signed "
+        f"by the student and parent/guardian(s). Upload a scanned/photographed copy of the signed "
+        f"letter as part of your Google Form submission above. YOU MUST ALSO CARRY THE SIGNED "
+        f"PHYSICAL COPY WITH YOU AND BRING IT IN PERSON ON THE DAY YOU ARRIVE FOR ROUND 2.\n\n"
         f"If you have any questions or need help, reach out to:\n{contacts_text}\n\n"
         f"We're looking forward to seeing you there!\n\n"
         f"— ADAPPT Organizing Committee" + _FOOTER_TEXT
@@ -356,13 +358,16 @@ def send_round2_selection_email(
           <p style="margin:8px 0 0;padding:10px 12px;border-radius:6px;background:#fdecec;
             color:#b3401f;font-weight:bold;">
             ⚠️ This form must be submitted by {consent_deadline_text}. Submissions received after
-            this time will not be accepted.
+            this time will not be accepted, and teams whose forms are not received on time will
+            be disqualified.
           </p>
         </li>
         <li>
-          <strong>Undertaking Letter (attached):</strong> Since the event involves an overnight stay
-          on campus, please print the attached undertaking letter, get it signed by both the student
-          and a parent/guardian, and bring the signed physical copy with you.
+          <strong>Undertaking Letter (attached):</strong> Print the attached undertaking letter and
+          get it signed by the student and parent/guardian(s). Upload a scanned/photographed copy of
+          the signed letter as part of your Google Form submission above.
+          <strong>You must also carry the signed physical copy with you and bring it in person on
+          the day you arrive for Round 2.</strong>
         </li>
       </ol>
       <p>If you have any questions or need help, reach out to:</p>
