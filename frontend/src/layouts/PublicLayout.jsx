@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: 'About', href: '#about' },
   { label: 'Domains', href: '#domains' },
   { label: 'Timeline', href: '#timeline' },
+  { label: 'Results', href: '/results' },
   { label: 'FAQ', href: '#faq' },
 ]
 
@@ -19,9 +20,13 @@ export function PublicLayout() {
           <Brand />
           <nav className="hidden items-center gap-6 md:flex">
             {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} className="text-sm text-ink-600 hover:text-ink-950">
+              <Link
+                key={link.href}
+                to={link.href.startsWith('#') ? `/${link.href}` : link.href}
+                className="text-sm text-ink-600 hover:text-ink-950"
+              >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="flex items-center gap-3">

@@ -40,6 +40,13 @@ export const adminApi = {
   deleteBlog: (id) => api.delete(`/admin/blogs/${id}`),
   setBlogStatus: (id, status) => api.put(`/admin/blogs/${id}/publish`, null, { params: { status } }),
 
+  listQualifiedTeams: () => api.get('/admin/qualified-teams'),
+  createQualifiedTeam: (payload) => api.post('/admin/qualified-teams', payload),
+  updateQualifiedTeam: (id, payload) => api.put(`/admin/qualified-teams/${id}`, payload),
+  deleteQualifiedTeam: (id) => api.delete(`/admin/qualified-teams/${id}`),
+  getResultsSettings: () => api.get('/admin/results-settings'),
+  updateResultsSettings: (payload) => api.put('/admin/results-settings', payload),
+
   listSubmissions: (params) => api.get('/admin/submissions', { params }),
   getSubmissionDetail: (id) => api.get(`/admin/submissions/${id}`),
   exportSubmissionsZip: () => api.get('/admin/submissions/export-zip'),

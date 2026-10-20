@@ -8,6 +8,7 @@ import { ParticipantLayout } from './layouts/ParticipantLayout'
 import { AdminLayout } from './layouts/AdminLayout'
 
 import { LandingPage } from './pages/public/LandingPage'
+import { ResultsPage } from './pages/public/ResultsPage'
 import { LoginPage } from './pages/public/LoginPage'
 import { AdminLoginPage } from './pages/public/AdminLoginPage'
 import { RequestAccessPage } from './pages/public/RequestAccessPage'
@@ -28,6 +29,7 @@ import { AdminTeamDetailPage } from './pages/admin/AdminTeamDetailPage'
 import { AdminDomainsPage } from './pages/admin/AdminDomainsPage'
 import { AdminProblemStatementsPage } from './pages/admin/AdminProblemStatementsPage'
 import { AdminBlogsPage } from './pages/admin/AdminBlogsPage'
+import { AdminResultsPage } from './pages/admin/AdminResultsPage'
 import { AdminSubmissionsPage } from './pages/admin/AdminSubmissionsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
@@ -41,6 +43,7 @@ export default function App() {
             {/* Public */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/results" element={<ResultsPage />} />
             </Route>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -70,6 +73,7 @@ export default function App() {
                 <Route path="/admin/domains" element={<AdminDomainsPage />} />
                 <Route path="/admin/problem-statements" element={<AdminProblemStatementsPage />} />
                 <Route path="/admin/blogs" element={<AdminBlogsPage />} />
+                <Route path="/admin/results" element={<AdminResultsPage />} />
                 <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
                 <Route path="/admin/settings" element={<AdminSettingsPage />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />

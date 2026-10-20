@@ -11,6 +11,7 @@ import {
   UploadCloud,
   SlidersHorizontal,
   ScrollText,
+  Trophy,
   LogOut,
   Menu,
 } from 'lucide-react'
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { to: '/admin/problem-statements', label: 'Problem Statements', icon: FileText },
   { to: '/admin/blogs', label: 'Blogs', icon: Newspaper },
   { to: '/admin/submissions', label: 'Submissions', icon: UploadCloud },
+  { to: '/admin/results', label: 'Results', icon: Trophy },
   { to: '/admin/settings', label: 'Competition Settings', icon: SlidersHorizontal },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
 ]

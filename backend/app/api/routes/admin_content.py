@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin
 from app.database import get_db
-from app.models import Blog, Domain, ProblemStatement, User
+from app.models import Blog, Domain, ProblemStatement, QualifiedTeam, User
 from app.schemas.blog import BlogCreate, BlogOut, BlogUpdate
 from app.schemas.domain import DomainCreate, DomainOut, DomainUpdate
 from app.schemas.problem_statement import ProblemStatementCreate, ProblemStatementOut, ProblemStatementUpdate
+from app.schemas.qualified_team import QualifiedTeamCreate, QualifiedTeamOut, QualifiedTeamUpdate
 from app.services.audit import log_action
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -169,3 +170,58 @@ def set_blog_status(
     db.refresh(blog)
     log_action(db, admin, f"set_blog_status:{status}", "blog", blog.id)
     return blog
+
+
+# --- Qualified teams (Round 1 results) -------------------------------------
+# Entered by hand from the judges' decisions, grouped by domain and ordered
+# by order_index within it. Visibility of the public Results page is a
+# separate on/off switch (see /admin/results-settings), so the admin can
+# build this list up before announcing it.
+
+@router.get("/qualified-teams", response_model=list[QualifiedTeamOut])
+def list_qualified_teams(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> list[QualifiedTeam]:
+    return db.query(QualifiedTeam).order_by(QualifiedTeam.domain_id, QualifiedTeam.order_index).all()
+
+
+@router.post("/qualified-teams", response_model=QualifiedTeamOut)
+def create_qualified_team(
+    payload: QualifiedTeamCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> QualifiedTeam:
+    if db.get(Domain, payload.domain_id) is None:
+        raise HTTPException(status_code=400, detail="Choose a valid competition domain.")
+    team = QualifiedTeam(**payload.model_dump())
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+    log_action(db, admin, "create_qualified_team", "qualified_team", team.id, {"team_name": team.team_name})
+    return team
+
+
+@router.put("/qualified-teams/{team_id}", response_model=QualifiedTeamOut)
+def update_qualified_team(
+    team_id: int, payload: QualifiedTeamUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> QualifiedTeam:
+    team = db.get(QualifiedTeam, team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="Qualified team not found.")
+    changes = payload.model_dump(exclude_unset=True)
+    if "domain_id" in changes and db.get(Domain, changes["domain_id"]) is None:
+        raise HTTPException(status_code=400, detail="Choose a valid competition domain.")
+    for field, value in changes.items():
+        setattr(team, field, value)
+    db.commit()
+    db.refresh(team)
+    log_action(db, admin, "update_qualified_team", "qualified_team", team.id)
+    return team
+
+
+@router.delete("/qualified-teams/{team_id}", status_code=204)
+def delete_qualified_team(
+    team_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> None:
+    team = db.get(QualifiedTeam, team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="Qualified team not found.")
+    db.delete(team)
+    db.commit()
+    log_action(db, admin, "delete_qualified_team", "qualified_team", team_id)

@@ -26,3 +26,8 @@ class Domain(Base, TimestampMixin):
     blog: Mapped["Blog | None"] = relationship(
         back_populates="domain", uselist=False, cascade="all, delete-orphan"
     )
+    qualified_teams: Mapped[list["QualifiedTeam"]] = relationship(
+        back_populates="domain",
+        cascade="all, delete-orphan",
+        order_by="QualifiedTeam.order_index",
+    )

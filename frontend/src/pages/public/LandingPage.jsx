@@ -60,6 +60,7 @@ const EVENT_DETAILS = [
 export function LandingPage() {
   const [domains, setDomains] = useState(null)
   const [timeline, setTimeline] = useState(null)
+  const [results, setResults] = useState(null)
 
   useEffect(() => {
     publicApi
@@ -70,10 +71,34 @@ export function LandingPage() {
       .getTimeline()
       .then(({ data }) => setTimeline(data))
       .catch(() => setTimeline(null))
+    publicApi
+      .getResults()
+      .then(({ data }) => setResults(data))
+      .catch(() => setResults(null))
   }, [])
 
   return (
     <div>
+      {results?.is_published && (
+        <Link
+          to="/results"
+          className="animate-fade-in-up group relative block overflow-hidden border-b border-accent-600/30 bg-gradient-to-r from-accent-600/20 via-accent-600/10 to-transparent px-4 py-3"
+        >
+          <div className="mx-auto flex max-w-6xl items-center justify-center gap-3 text-center sm:justify-between sm:text-left">
+            <div className="flex items-center gap-2.5">
+              <Trophy size={18} className="shrink-0 text-accent-500" />
+              <p className="text-sm font-medium text-ink-900">
+                <span className="font-semibold">Round 1 Results are out!</span>{' '}
+                <span className="text-ink-600">See who's moving on to Round 2 — Tech Twists.</span>
+              </p>
+            </div>
+            <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-accent-500 group-hover:underline sm:flex">
+              View Results <ArrowRight size={14} />
+            </span>
+          </div>
+        </Link>
+      )}
+
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 grid-overlay" />

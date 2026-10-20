@@ -37,4 +37,5 @@ export const uploadsApi = {
 export const publicApi = {
   getDomains: () => api.get('/domains'),
   getTimeline: () => api.get('/public/timeline'),
+  getResults: () => api.get('/public/results'),
 }

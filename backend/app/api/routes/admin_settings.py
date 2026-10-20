@@ -10,7 +10,9 @@ from app.schemas.admin import (
     RegistrationSettingsOut,
     RegistrationSettingsUpdate,
 )
+from app.schemas.qualified_team import ResultsSettingsOut, ResultsSettingsUpdate
 from app.services.audit import log_action
+from app.services.results import get_or_create_results_settings
 from app.services.self_registration import get_or_create_registration_settings
 from app.services.submissions import ROUND_1_KEY
 
@@ -33,6 +35,25 @@ def update_registration_settings_route(
     db.commit()
     db.refresh(row)
     log_action(db, admin, "update_registration_settings", "registration_settings", row.id, {"is_open": row.is_open})
+    return row
+
+
+@router.get("/results-settings", response_model=ResultsSettingsOut)
+def get_results_settings_route(db: Session = Depends(get_db), _: User = Depends(require_admin)) -> ResultsSettingsOut:
+    return get_or_create_results_settings(db)
+
+
+@router.put("/results-settings", response_model=ResultsSettingsOut)
+def update_results_settings_route(
+    payload: ResultsSettingsUpdate, db: Session = Depends(get_db), admin: User = Depends(require_admin)
+) -> ResultsSettingsOut:
+    row = get_or_create_results_settings(db)
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(row, field, value)
+    db.commit()
+    db.refresh(row)
+    log_action(db, admin, "update_results_settings", "results_settings", row.id, changes)
     return row
 
 

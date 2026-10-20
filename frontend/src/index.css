@@ -84,6 +84,18 @@
     background-clip: text;
     color: transparent;
   }
+
+  /* Faint scattered dot field, purely decorative — a quieter, more
+     celebratory cousin of .grid-overlay for results/announcement heroes. */
+  .confetti-dots {
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--color-accent-500) 45%, transparent) 1.5px,
+      transparent 1.5px
+    );
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 10%, black 30%, transparent 100%);
+    opacity: 0.5;
+  }
 }
 
 @keyframes fade-in-up {
@@ -99,4 +111,17 @@
 
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out both;
+}
+
+@keyframes trophy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent-600) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-accent-600) 0%, transparent);
+  }
+}
+
+.trophy-pulse {
+  animation: trophy-pulse 2.4s ease-in-out infinite;
 }
