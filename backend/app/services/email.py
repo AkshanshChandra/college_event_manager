@@ -309,6 +309,7 @@ def send_round2_selection_email(
     reporting_time_text: str,
     event_dates_text: str,
     consent_form_url: str,
+    consent_deadline_text: str,
     undertaking_attachment: EmailAttachment,
 ) -> None:
     subject = "ADAPPT 5.0 — You're Selected for Round 2 (Tech Twists)!"
@@ -324,7 +325,10 @@ def send_round2_selection_email(
         f"- Reporting Time: {reporting_time_text}\n"
         f"- Event Duration: {event_dates_text}\n\n"
         f"Before you arrive, please complete the following:\n\n"
-        f"1. Consent Form (required): Fill out this form before the event —\n{consent_form_url}\n\n"
+        f"1. Consent Form (required): EVERY INDIVIDUAL TEAM MEMBER MUST FILL OUT THIS FORM "
+        f"SEPARATELY — one submission per member, not one per team.\n{consent_form_url}\n\n"
+        f"*** THIS FORM MUST BE SUBMITTED BY {consent_deadline_text}. SUBMISSIONS RECEIVED AFTER "
+        f"THIS TIME WILL NOT BE ACCEPTED. ***\n\n"
         f"2. Undertaking Letter (attached): Since the event involves an overnight stay on campus, "
         f"please print the attached undertaking letter, get it signed by both the student and a "
         f"parent/guardian, and bring the signed physical copy with you.\n\n"
@@ -346,8 +350,14 @@ def send_round2_selection_email(
       <p><strong>Before you arrive, please complete the following:</strong></p>
       <ol style="padding-left:18px;">
         <li style="margin-bottom:8px;">
-          <strong>Consent Form (required):</strong>
-          <a href="{consent_form_url}" style="color:#c92c37;">Fill it out here</a> before the event.
+          <strong>Consent Form (required):</strong> <strong>Every individual team member must fill
+          out this form separately — one submission per member, not one per team.</strong>
+          <a href="{consent_form_url}" style="color:#c92c37;">Fill it out here</a>.
+          <p style="margin:8px 0 0;padding:10px 12px;border-radius:6px;background:#fdecec;
+            color:#b3401f;font-weight:bold;">
+            ⚠️ This form must be submitted by {consent_deadline_text}. Submissions received after
+            this time will not be accepted.
+          </p>
         </li>
         <li>
           <strong>Undertaking Letter (attached):</strong> Since the event involves an overnight stay
